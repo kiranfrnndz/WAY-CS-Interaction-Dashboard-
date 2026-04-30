@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCD Daily Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #f4f3ef;
+    --surface: #ffffff;
+    --surface2: #f0ede8;
+    --border: #e2ddd6;
+    --border2: #ccc8c0;
+    --text: #1a1916;
+    --text2: #6b6760;
+    --text3: #a09c96;
+    --green: #1d9e75;
+    --green-bg: #eaf3de;
+    --green-text: #27500a;
+    --red: #e24b4a;
+    --red-bg: #fcebeb;
+    --red-text: #791f1f;
+    --amber: #ba7517;
+    --amber-bg: #faeeda;
+    --amber-text: #633806;
+    --blue: #378add;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* UPLOAD SCREEN */
+  .upload-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .upload-logo {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+
+  .upload-title {
+    font-size: 32px;
+    font-weight: 300;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+    text-align: center;
+    letter-spacing: -0.5px;
+  }
+
+  .upload-subtitle {
+    font-size: 14px;
+    color: var(--text2);
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+
+  .upload-zone {
+    width: 100%;
+    max-width: 480px;
+    border: 1.5px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--blue);
+    background: #f0f6ff;
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 1rem;
+    background: var(--surface2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .upload-icon svg { width: 22px; height: 22px; stroke: var(--text2); fill: none; stroke-width: 1.5; }
+
+  .upload-zone-label {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .upload-zone-sub {
+    font-size: 12px;
+    color: var(--text3);
+  }
+
+  .upload-progress {
+    margin-top: 1.5rem;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .upload-note {
+    margin-top: 2rem;
+    font-size: 12px;
+    color: var(--text3);
+    max-width: 360px;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  /* DASHBOARD */
+  .dashboard { display: none; }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar-brand { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+  .topbar-date { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+  .topbar-target { font-size: 11px; color: var(--text3); }
+
+  .upload-new-btn {
+    font-size: 12px;
+    padding: 6px 14px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .upload-new-btn:hover { background: var(--surface2); color: var(--text); }
+
+  .tabs-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text2);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    font-weight: 400;
+  }
+
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
+
+  .content { padding: 1.5rem; max-width: 1200px; margin: 0 auto; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* KPI GRID */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+  }
+
+  .kpi-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; font-weight: 500; letter-spacing: 0.03em; }
+  .kpi-value { font-size: 22px; font-weight: 500; color: var(--text); line-height: 1; }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .kpi-value.good { color: var(--green); }
+  .kpi-value.bad { color: var(--red); }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 14px;
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+  }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+
+  /* LEGEND */
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+  /* CHART */
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* TABLE */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th {
+    background: var(--surface2);
+    padding: 9px 11px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    letter-spacing: 0.02em;
+  }
+  thead th:hover { color: var(--text); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 8px 11px; }
+  tfoot td { padding: 9px 11px; font-weight: 600; font-size: 11px; color: var(--text2); border-top: 1px solid var(--border2); background: var(--surface2); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-family: 'DM Mono', monospace; font-size: 11px; }
+
+  /* BADGE */
+  .badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 500; }
+  .badge.g { background: var(--green-bg); color: var(--green-text); }
+  .badge.r { background: var(--red-bg); color: var(--red-text); }
+  .badge.a { background: var(--amber-bg); color: var(--amber-text); }
+
+  /* DRIVER BLOCKS */
+  .driver-block { margin-bottom: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+  .driver-header { background: var(--surface2); padding: 9px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.1s; }
+  .driver-header:hover { background: var(--border); }
+  .driver-header-label { font-size: 12px; font-weight: 500; color: var(--text); flex: 1; }
+  .driver-header-right { display: flex; align-items: center; gap: 8px; }
+  .driver-count { font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; }
+  .driver-arrow { font-size: 10px; color: var(--text3); }
+  .driver-body { padding: 10px 12px; display: none; border-top: 1px solid var(--border); }
+  .driver-body.open { display: block; }
+  .lot-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .lot-row:last-child { border-bottom: none; }
+  .lot-name { flex: 1; font-size: 11px; color: var(--text2); }
+  .lot-bar-wrap { width: 80px; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+  .lot-bar { height: 100%; border-radius: 3px; }
+  .lot-count { font-size: 11px; font-weight: 500; color: var(--text); min-width: 20px; text-align: right; font-family: 'DM Mono', monospace; }
+  .flag { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px; background: var(--red-bg); color: var(--red-text); margin-left: 4px; font-weight: 600; }
+
+  /* DISPUTE LOT ROWS */
+  .disp-lot { display: flex; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); gap: 10px; }
+  .disp-lot:last-child { border-bottom: none; }
+  .disp-lot-name { flex: 1; font-size: 12px; }
+  .disp-lot-bar-wrap { width: 100px; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+  .disp-lot-bar { height: 100%; border-radius: 3px; background: var(--red); }
+  .disp-lot-count { font-size: 12px; font-weight: 600; color: var(--red); min-width: 20px; text-align: right; font-family: 'DM Mono', monospace; }
+
+  /* CONTROLS */
+  .controls { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  select, input[type="text"] {
+    padding: 7px 10px;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  select:focus, input[type="text"]:focus { border-color: var(--blue); }
+  input[type="text"] { width: 200px; }
+
+  .hint { font-size: 11px; color: var(--text3); }
+
+  /* EMPTY STATE */
+  .empty { text-align: center; padding: 2rem; color: var(--text3); font-size: 13px; }
+
+  /* ERROR */
+  .error-msg {
+    background: var(--red-bg);
+    color: var(--red-text);
+    border: 1px solid #f7c1c1;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-top: 1rem;
+    display: none;
+  }
+
+  @media (max-width: 600px) {
+    .grid2, .grid3 { grid-template-columns: 1fr; }
+    .content { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- UPLOAD SCREEN -->
+<div class="upload-screen" id="uploadScreen">
+  <div class="upload-logo">Way.com · Customer Operations</div>
+  <h1 class="upload-title">CCD Daily Dashboard</h1>
+  <p class="upload-subtitle">Upload today's CRM report to generate your dashboard instantly</p>
+
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".xlsx,.xls" />
+    <div class="upload-icon">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+    </div>
+    <div class="upload-zone-label">Drop your Excel sheet here</div>
+    <div class="upload-zone-sub">or click to browse · .xlsx / .xls</div>
+  </div>
+
+  <div class="upload-progress" id="uploadProgress">
+    <div class="spinner"></div>
+    <span id="progressText">Reading file...</span>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <p class="upload-note">
+    All processing happens in your browser.<br>
+    No data is uploaded to any server.<br>
+    Works with the standard CCD report format.
+  </p>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-brand">CCD Daily Dashboard</div>
+      <div class="topbar-date" id="reportDate">—</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="topbar-target">FCR target: 80% &nbsp;|&nbsp; Disputes & reviews excluded from FCR</div>
+      <button class="upload-new-btn" onclick="resetDashboard()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        Upload new sheet
+      </button>
+    </div>
+  </div>
+
+  <div class="tabs-bar">
+    <button class="tab-btn active" onclick="showTab('t1',this)">Overview</button>
+    <button class="tab-btn" onclick="showTab('t2',this)">Call drivers</button>
+    <button class="tab-btn" onclick="showTab('t3',this)">Disputes</button>
+    <button class="tab-btn" onclick="showTab('t4',this)">Escalations</button>
+    <button class="tab-btn" onclick="showTab('t5',this)">Refunds</button>
+    <button class="tab-btn" onclick="showTab('t6',this)">Platforms</button>
+    <button class="tab-btn" onclick="showTab('t7',this)">Time patterns</button>
+    <button class="tab-btn" onclick="showTab('t8',this)">Agent productivity</button>
+  </div>
+
+  <div class="content">
+
+    <!-- TAB 1: OVERVIEW -->
+    <div class="section active" id="t1">
+      <div class="kpi-grid" id="kpi-overview"></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Channel mix</div>
+          <div class="legend" id="leg-channel"></div>
+          <div class="chart-wrap" style="height:180px"><canvas id="c-channel"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Vertical distribution</div>
+          <div class="legend" id="leg-vertical"></div>
+          <div class="chart-wrap" style="height:180px"><canvas id="c-vertical"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">FCR by channel vs 80% target</div>
+        <div class="chart-wrap" style="height:150px"><canvas id="c-fcr-channel"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Vertical summary</div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Vertical</th><th class="num">Tickets</th><th class="num">Interactions</th><th class="num">Calls</th><th class="num">Emails</th><th class="num">Chats</th><th class="num">Disputes</th><th class="num">FCR</th></tr></thead>
+          <tbody id="tbl-vertical-summary"></tbody>
+          <tfoot><tr id="tbl-vertical-footer"></tr></tfoot>
+        </table></div>
+      </div>
+      <div class="card">
+        <div class="card-title">FCR by vertical vs 80% target</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c-fcr-vertical"></canvas></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: CALL DRIVERS -->
+    <div class="section" id="t2">
+      <div class="controls">
+        <select id="v-sel" onchange="renderDrivers()"></select>
+        <select id="ch-sel" onchange="renderDrivers()">
+          <option>Call</option><option>Email</option><option>Chat</option><option>Dispute</option>
+        </select>
+        <span class="hint">Click a reason to expand lot breakdown</span>
+      </div>
+      <div id="drivers-list"></div>
+      <div class="card">
+        <div class="card-title" id="drivers-chart-title">Top drivers — chart</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="c-drivers"></canvas></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: DISPUTES -->
+    <div class="section" id="t3">
+      <div class="kpi-grid" id="kpi-disputes"></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">By vertical</div>
+          <div class="legend" id="leg-disp-vert"></div>
+          <div class="chart-wrap" style="height:170px"><canvas id="c-disp-vert"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Dispute reasons</div>
+          <div class="chart-wrap" style="height:170px"><canvas id="c-disp-reason"></canvas></div>
+        </div>
+      </div>
+      <div id="disp-lots-container"></div>
+    </div>
+
+    <!-- TAB 4: ESCALATIONS -->
+    <div class="section" id="t4">
+      <div class="kpi-grid" id="kpi-escalations"></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">By vertical</div>
+          <div class="legend" id="leg-esc-vert"></div>
+          <div class="chart-wrap" style="height:170px"><canvas id="c-esc-vert"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">By channel</div>
+          <div class="legend" id="leg-esc-ch"></div>
+          <div class="chart-wrap" style="height:170px"><canvas id="c-esc-ch"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top escalation reasons</div>
+        <div class="chart-wrap" style="height:240px"><canvas id="c-esc-reasons"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Escalation status</div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Status</th><th class="num">Count</th><th class="num">%</th></tr></thead>
+          <tbody id="tbl-esc-status"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- TAB 5: REFUNDS -->
+    <div class="section" id="t5">
+      <div class="kpi-grid" id="kpi-refunds"></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Refund type count</div>
+          <div class="legend" id="leg-refund-type"></div>
+          <div class="chart-wrap" style="height:200px"><canvas id="c-refund-type"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Dollar value — card refunds</div>
+          <div class="chart-wrap" style="height:200px"><canvas id="c-refund-value"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Refunds by vertical</div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Vertical</th><th class="num">BCI card</th><th class="num">BCI waybucks</th><th class="num">ACI full</th><th class="num">ACI partial</th><th class="num">ACI denied</th><th class="num">Sub refund</th><th class="num">Total</th></tr></thead>
+          <tbody id="tbl-refund-vert"></tbody>
+          <tfoot><tr id="tbl-refund-footer"></tr></tfoot>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- TAB 6: PLATFORMS -->
+    <div class="section" id="t6">
+      <div class="kpi-grid" id="kpi-platforms"></div>
+      <div class="card">
+        <div class="card-title">Tickets by booking platform</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="c-platforms"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Platform by vertical</div>
+        <div class="tbl-wrap"><table>
+          <thead><tr id="tbl-platform-head"></tr></thead>
+          <tbody id="tbl-platform-body"></tbody>
+          <tfoot><tr id="tbl-platform-footer"></tr></tfoot>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- TAB 7: TIME PATTERNS -->
+    <div class="section" id="t7">
+      <div class="kpi-grid" id="kpi-time"></div>
+      <div class="card">
+        <div class="card-title">Hourly ticket volume — PST with shift overlay</div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#B5D4F4"></span>Shift 1 (6:30 PM–3:30 AM PST)</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#C0DD97"></span>Shift 2 (2:00 AM–11:00 AM PST)</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#FAC775"></span>Shift 3 (10:00 AM–7:00 PM PST)</span>
+        </div>
+        <div class="chart-wrap" style="height:280px"><canvas id="c-hourly"></canvas></div>
+      </div>
+    </div>
+
+    <!-- TAB 8: AGENT PRODUCTIVITY -->
+    <div class="section" id="t8">
+      <div class="kpi-grid" id="kpi-agents"></div>
+      <div class="card">
+        <div class="card-title">Interactions per ticket — top agents by complexity (min 5 tickets)</div>
+        <div class="chart-wrap" style="height:240px"><canvas id="c-ipt"></canvas></div>
+      </div>
+      <div class="controls">
+        <input type="text" id="agent-search" placeholder="Search agent..." oninput="renderAgents()">
+        <select id="agent-filter" onchange="renderAgents()">
+          <option value="all">All agents</option>
+          <option value="fcr-low">FCR below 80%</option>
+          <option value="esc-high">Esc rate above 5%</option>
+          <option value="complex">High complexity (>1.4x)</option>
+        </select>
+        <span class="hint" id="agent-count"></span>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr>
+          <th onclick="sortAgents('name')"># Agent <span id="arr-name"></span></th>
+          <th class="num" onclick="sortAgents('total')">Total <span id="arr-total">↓</span></th>
+          <th class="num" onclick="sortAgents('calls')">Calls <span id="arr-calls"></span></th>
+          <th class="num" onclick="sortAgents('emails')">Emails <span id="arr-emails"></span></th>
+          <th class="num" onclick="sortAgents('chats')">Chats <span id="arr-chats"></span></th>
+          <th class="num" onclick="sortAgents('disputes')">Disputes <span id="arr-disputes"></span></th>
+          <th class="num" onclick="sortAgents('esc_rate')">Esc % <span id="arr-esc_rate"></span></th>
+          <th class="num" onclick="sortAgents('fcr_pct')">FCR % <span id="arr-fcr_pct"></span></th>
+          <th class="num" onclick="sortAgents('avg_ints')">Ints/ticket <span id="arr-avg_ints"></span></th>
+          <th class="num" onclick="sortAgents('multi_pct')">Multi-touch % <span id="arr-multi_pct"></span></th>
+        </tr></thead>
+        <tbody id="agent-tbody"></tbody>
+        <tfoot><tr id="agent-footer"></tr></tfoot>
+      </table></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────────────────
+const COLORS = ['#378add','#1d9e75','#ba7517','#7f77dd','#888780','#e24b4a','#d85a30','#639922'];
+const FCR_TARGET = 80;
+
+const BCI_CARD = ['BCI -Card refund','Before check-in, Card Refund','BCI - Refunded','Before Check-In -Refunded','Before Check-In - Way bucks offered customer denied Refunded back to card','Confirmed With Lot -Before Check-In -Way bucks offered customer denied Refunded back to card','Before check in - Refunded back to card','Before check in - Cancelled'];
+const BCI_WB = ['BCI -Way bucks issued','Before check-in, Wallet refunded'];
+const ACI_FULL = ['ACI - Refunded','After check-in, Card Refund','Cancelled After Check-in - Back To Card','Not Confirmed with Lot with Lot After Check-in - Way bucks/Wallet offered customer denied Refunded back to card','Confirmed With Lot -After Check-In - Way bucks offered customer denied Refunded back to card','Not Confirmed With Lot -After Check-In - Way bucks offered customer denied Refunded back to card','Way bucks offered customer denied Refunded back to card - After Check-In'];
+const ACI_PARTIAL = ['Partial card refund issued for the unused days','Partial refund Processed - Way bucks offered customer denied Refunded back to card'];
+const ACI_WB = ['ACI -Way bucks issued','Way bucks offered customer accepted - After Check-In','Partial refund Processed - Way bucks offered customer accepted'];
+const ACI_DENIED = ['After check-in, denied','Denied - After Check-In','Refund Denied'];
+const SUB_REFUND = ['Subscription Cancelled- Refund Issued'];
+const SUB_NO_REFUND = ['Subscription Cancelled - No Refund'];
+
+// ── GLOBAL STATE ───────────────────────────────────────────────────────────
+let G = {};
+let charts = {};
+let agentSortKey = 'total';
+let agentSortAsc = false;
+let driversChart = null;
+
+// ── UPLOAD ─────────────────────────────────────────────────────────────────
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag-over'); if(e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if(e.target.files[0]) processFile(e.target.files[0]); });
+
+function showProgress(text) {
+  const p = document.getElementById('uploadProgress');
+  document.getElementById('progressText').textContent = text;
+  p.style.display = 'flex';
+}
+function showError(msg) {
+  const e = document.getElementById('errorMsg');
+  e.textContent = msg;
+  e.style.display = 'block';
+  document.getElementById('uploadProgress').style.display = 'none';
+}
+
+function processFile(file) {
+  document.getElementById('errorMsg').style.display = 'none';
+  showProgress('Reading file...');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      showProgress('Parsing data...');
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      showProgress('Building dashboard...');
+      setTimeout(() => { buildDashboard(raw); }, 50);
+    } catch(err) {
+      showError('Could not read this file. Please make sure it is a valid CCD report Excel file.');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function resetDashboard() {
+  document.getElementById('uploadScreen').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('uploadProgress').style.display = 'none';
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch(e) {} });
+  charts = {};
+  if(driversChart) { try { driversChart.destroy(); } catch(e) {} driversChart = null; }
+}
+
+// ── DATA PROCESSING ────────────────────────────────────────────────────────
+function mapVertical(row) {
+  const v = String(row['Vertical']||'').trim();
+  const sv = String(row['SubVertical']||'').trim();
+  if(v==='Parking' && sv.includes('Airport')) return 'Airport Parking';
+  if(v==='Parking' && sv.includes('City')) return 'City Parking';
+  if(v==='Carwash') return 'Carwash';
+  if(v==='Wayplus') return 'Wayplus';
+  if(v==='Auto Repair') return 'R&M';
+  if(v==='Insurance') return 'Insurance';
+  if(v==='Gas') return 'Gas';
+  if(v==='General') return 'General';
+  return 'Other';
+}
+
+function tagRefund(action) {
+  const a = String(action||'').trim();
+  if(BCI_CARD.includes(a)) return 'BCI Card';
+  if(BCI_WB.includes(a)) return 'BCI Waybucks';
+  if(ACI_FULL.includes(a)) return 'ACI Full';
+  if(ACI_PARTIAL.includes(a)) return 'ACI Partial';
+  if(ACI_WB.includes(a)) return 'ACI Waybucks';
+  if(ACI_DENIED.includes(a)) return 'ACI Denied';
+  if(SUB_REFUND.includes(a)) return 'Sub Refund';
+  if(SUB_NO_REFUND.includes(a)) return 'Sub No Refund';
+  return null;
+}
+
+function buildDashboard(raw) {
+  // Filter to 27th of the report date (ticket creation date)
+  // Find the most common ticket date to use as the report date
+  const dateCounts = {};
+  raw.forEach(r => {
+    const tid = r['Ticket ID'];
+    if(tid) {
+      let d = r['Ticket_created_date'];
+      if(d) {
+        let ds = '';
+        if(d instanceof Date) ds = d.toISOString().split('T')[0];
+        else ds = String(d).split(' ')[0];
+        dateCounts[ds] = (dateCounts[ds]||0) + 1;
+      }
+    }
+  });
+  const reportDate = Object.entries(dateCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+
+  // Tag each row
+  const df = raw.map(r => ({
+    ...r,
+    _vertical: mapVertical(r),
+    _refund: tagRefund(r['Action']),
+    _driver: (String(r['Reason']||'').trim() + ' > ' + String(r['Sub Reason']||'').trim()).replace(/ > $/,'').replace(/^ > /,''),
+    _isTicket: !!r['Ticket ID'],
+    _isEscalated: String(r['TKT_IssueReason']||'') === 'Escalated',
+    _isDispute: String(r['Interaction']||'') === 'Dispute',
+    _isReview: String(r['SubVertical']||'').toLowerCase().includes('review'),
+  }));
+
+  // All ticket rows (first touch)
+  const tickets = df.filter(r => r._isTicket);
+
+  // Follow-up OGIs
+  const followupOGIs = new Set(df.filter(r => !r._isTicket && r['OGI']).map(r => String(r['OGI'])));
+
+  // FCR tagging (exclude disputes & reviews)
+  const fcrTickets = tickets.filter(r => !r._isDispute && !r._isReview);
+  fcrTickets.forEach(r => { r._isFCR = r['OGI'] ? !followupOGIs.has(String(r['OGI'])) : true; });
+
+  // Interactions per ticket via OGI
+  const followupPerOGI = {};
+  df.filter(r => !r._isTicket && r['OGI']).forEach(r => {
+    const k = String(r['OGI']);
+    followupPerOGI[k] = (followupPerOGI[k]||0) + 1;
+  });
+  tickets.forEach(r => {
+    const fc = r['OGI'] ? (followupPerOGI[String(r['OGI'])]||0) : 0;
+    r._followups = fc;
+    r._totalInts = 1 + fc;
+  });
+
+  G = { df, tickets, fcrTickets, reportDate };
+
+  buildOverview();
+  buildDriversTab();
+  buildDisputesTab();
+  buildEscalationsTab();
+  buildRefundsTab();
+  buildPlatformsTab();
+  buildTimeTab();
+  buildAgentTab();
+
+  // Show dashboard
+  document.getElementById('uploadScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('reportDate').textContent = reportDate || 'Unknown date';
+  showTab('t1', document.querySelector('.tab-btn'));
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function mkKPI(label, value, sub='', cls='') {
+  return `<div class="kpi"><div class="kpi-label">${label}</div><div class="kpi-value ${cls}">${value}</div>${sub?`<div class="kpi-sub">${sub}</div>`:''}</div>`;
+}
+
+function mkLegend(items) {
+  return items.map((item,i) => `<span class="legend-item"><span class="legend-dot" style="background:${COLORS[i%COLORS.length]}"></span>${item}</span>`).join('');
+}
+
+function mkDonut(id, labels, data, colors) {
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors||COLORS.slice(0,data.length), borderWidth: 2, borderColor: '#fff' }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+  });
+}
+
+function mkBar(id, labels, datasets, opts={}) {
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#a09c96', font: { size: 11 }, ...opts.xticks } },
+        y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { color: '#a09c96', ...opts.yticks }, ...opts.yscale }
+      },
+      ...opts.extra
+    }
+  });
+}
+
+function countBy(arr, key) {
+  const r = {};
+  arr.forEach(row => { const k = String(row[key]||''); r[k] = (r[k]||0) + 1; });
+  return r;
+}
+
+function groupBy(arr, key) {
+  const r = {};
+  arr.forEach(row => { const k = String(row[key]||''); if(!r[k]) r[k] = []; r[k].push(row); });
+  return r;
+}
+
+function pct(n,d) { return d ? Math.round(n/d*100*10)/10 : 0; }
+function fmt$(n) { return '$'+Math.round(n).toLocaleString(); }
+
+// ── TAB 1: OVERVIEW ────────────────────────────────────────────────────────
+function buildOverview() {
+  const { df, tickets, fcrTickets } = G;
+  const total = tickets.length;
+  const totalInts = df.length;
+  const calls = df.filter(r=>r['Interaction']==='Call').length;
+  const emails = df.filter(r=>r['Interaction']==='Email').length;
+  const chats = df.filter(r=>r['Interaction']==='Chat').length;
+  const disputes = df.filter(r=>r['Interaction']==='Dispute').length;
+  const escs = df.filter(r=>r._isEscalated).length;
+  const fcrTotal = fcrTickets.length;
+  const fcrCount = fcrTickets.filter(r=>r._isFCR).length;
+  const fcrPct = pct(fcrCount,fcrTotal);
+
+  document.getElementById('kpi-overview').innerHTML =
+    mkKPI('Total tickets', total.toLocaleString()) +
+    mkKPI('Total interactions', totalInts.toLocaleString()) +
+    mkKPI('Calls', calls.toLocaleString()) +
+    mkKPI('Emails', emails.toLocaleString()) +
+    mkKPI('Chats', chats.toLocaleString()) +
+    mkKPI('Disputes', disputes.toLocaleString(), '', 'bad') +
+    mkKPI('Overall FCR', fcrPct+'%', fcrPct>=FCR_TARGET?'above target':'below target', fcrPct>=FCR_TARGET?'good':'bad') +
+    mkKPI('Escalations', escs, pct(escs,total)+'% rate', 'bad');
+
+  // Channel donut
+  const chData = [calls,emails,chats,disputes].filter(v=>v>0);
+  const chLabels = ['Call','Email','Chat','Dispute'].filter((_,i)=>[calls,emails,chats,disputes][i]>0);
+  const chColors = ['#378add','#1d9e75','#ba7517','#e24b4a'].filter((_,i)=>[calls,emails,chats,disputes][i]>0);
+  document.getElementById('leg-channel').innerHTML = chLabels.map((l,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${chColors[i]}"></span>${l} ${pct([calls,emails,chats,disputes].filter((_,j)=>[calls,emails,chats,disputes][j]>0)[i],totalInts)}%</span>`).join('');
+  mkDonut('c-channel', chLabels, chData, chColors);
+
+  // Vertical donut
+  const vCounts = {};
+  df.forEach(r => { vCounts[r._vertical]=(vCounts[r._vertical]||0)+1; });
+  const vOrder = Object.entries(vCounts).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('leg-vertical').innerHTML = vOrder.map((v,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${COLORS[i%COLORS.length]}"></span>${v[0]} ${pct(v[1],totalInts)}%</span>`).join('');
+  mkDonut('c-vertical', vOrder.map(v=>v[0]), vOrder.map(v=>v[1]), vOrder.map((_,i)=>COLORS[i%COLORS.length]));
+
+  // FCR by channel
+  const fcrByCh = {};
+  fcrTickets.forEach(r => {
+    const ch = String(r['Interaction']||'');
+    if(!fcrByCh[ch]) fcrByCh[ch] = {t:0,f:0};
+    fcrByCh[ch].t++;
+    if(r._isFCR) fcrByCh[ch].f++;
+  });
+  const chKeys = Object.keys(fcrByCh);
+  const chFCR = chKeys.map(k=>pct(fcrByCh[k].f,fcrByCh[k].t));
+  mkBar('c-fcr-channel', chKeys, [
+    { data: chFCR, backgroundColor: chFCR.map(v=>v>=FCR_TARGET?'#1d9e75':'#e24b4a'), borderRadius:4, borderSkipped:false },
+    { data: chKeys.map(()=>FCR_TARGET), type:'line', borderColor:'#e24b4a', borderDash:[4,4], borderWidth:1.5, pointRadius:0, fill:false }
+  ], { yscale:{min:50,max:100}, yticks:{callback:v=>v+'%'} });
+
+  // Vertical summary table
+  const verticals = ['Airport Parking','City Parking','Wayplus','General','Insurance','Carwash','R&M','Gas'];
+  let tbody = ''; let totT=0,totI=0,totC=0,totE=0,totCh=0,totD=0;
+  verticals.forEach(v => {
+    const vTickets = tickets.filter(r=>r._vertical===v);
+    const vInts = df.filter(r=>r._vertical===v);
+    const vFCR = fcrTickets.filter(r=>r._vertical===v);
+    const vFCRPct = vFCR.length ? pct(vFCR.filter(r=>r._isFCR).length, vFCR.length) : null;
+    const t=vTickets.length, ints=vInts.length, c=vInts.filter(r=>r['Interaction']==='Call').length, e=vInts.filter(r=>r['Interaction']==='Email').length, ch=vInts.filter(r=>r['Interaction']==='Chat').length, d=vInts.filter(r=>r['Interaction']==='Dispute').length;
+    if(t===0) return;
+    totT+=t; totI+=ints; totC+=c; totE+=e; totCh+=ch; totD+=d;
+    const fcrBadge = vFCRPct!==null ? `<span class="badge ${vFCRPct>=FCR_TARGET?'g':'r'}">${vFCRPct}%</span>` : '—';
+    tbody += `<tr><td>${v}</td><td class="num">${t.toLocaleString()}</td><td class="num">${ints.toLocaleString()}</td><td class="num">${c}</td><td class="num">${e}</td><td class="num">${ch}</td><td class="num">${d}</td><td class="num">${fcrBadge}</td></tr>`;
+  });
+  document.getElementById('tbl-vertical-summary').innerHTML = tbody;
+  const totalFCR = fcrTickets.length ? pct(fcrTickets.filter(r=>r._isFCR).length,fcrTickets.length) : 0;
+  document.getElementById('tbl-vertical-footer').innerHTML = `<td><b>Total</b></td><td class="num">${totT.toLocaleString()}</td><td class="num">${totI.toLocaleString()}</td><td class="num">${totC}</td><td class="num">${totE}</td><td class="num">${totCh}</td><td class="num">${totD}</td><td class="num">${totalFCR}%</td>`;
+
+  // FCR by vertical chart
+  const vFCRData = verticals.map(v => {
+    const vf = fcrTickets.filter(r=>r._vertical===v);
+    return vf.length ? pct(vf.filter(r=>r._isFCR).length,vf.length) : null;
+  });
+  const vLabels = verticals.filter((_,i)=>vFCRData[i]!==null);
+  const vData = vFCRData.filter(v=>v!==null);
+  mkBar('c-fcr-vertical', vLabels, [
+    { data: vData, backgroundColor: vData.map(v=>v>=FCR_TARGET?'#1d9e75':'#e24b4a'), borderRadius:4, borderSkipped:false },
+    { data: vLabels.map(()=>FCR_TARGET), type:'line', borderColor:'#e24b4a', borderDash:[4,4], borderWidth:1.5, pointRadius:0, fill:false }
+  ], { yscale:{min:0,max:110}, yticks:{callback:v=>v+'%'} });
+}
+
+// ── TAB 2: CALL DRIVERS ────────────────────────────────────────────────────
+function buildDriversTab() {
+  const { df } = G;
+  const verticals = [...new Set(df.map(r=>r._vertical))].filter(v=>v!=='Other').sort();
+  const vSel = document.getElementById('v-sel');
+  vSel.innerHTML = verticals.map(v=>`<option>${v}</option>`).join('');
+  renderDrivers();
+}
+
+function renderDrivers() {
+  const { df } = G;
+  const v = document.getElementById('v-sel').value;
+  const ch = document.getElementById('ch-sel').value;
+  const filtered = df.filter(r=>r._vertical===v && r['Interaction']===ch);
+  document.getElementById('drivers-chart-title').textContent = v+' · '+ch+' — top drivers';
+
+  // Count drivers
+  const dCounts = {};
+  filtered.forEach(r => { dCounts[r._driver]=(dCounts[r._driver]||0)+1; });
+  const top5 = Object.entries(dCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  if(!top5.length) {
+    document.getElementById('drivers-list').innerHTML = '<div class="empty">No data for this channel in this vertical</div>';
+    if(driversChart) { driversChart.destroy(); driversChart=null; }
+    return;
+  }
+
+  const maxT = top5[0][1];
+  document.getElementById('drivers-list').innerHTML = top5.map(([driver,count],i) => {
+    // Lot level
+    const dRows = filtered.filter(r=>r._driver===driver);
+    const lotCounts = {};
+    dRows.forEach(r => { const l=String(r['Lot Name']||'').trim(); if(l) lotCounts[l]=(lotCounts[l]||0)+1; });
+    const topLots = Object.entries(lotCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const hasLots = topLots.length>0;
+    const maxL = topLots.length ? topLots[0][1] : 1;
+    const lotHtml = hasLots ? `<div class="driver-body" id="db-${i}">${topLots.map(([lot,lc])=>{
+      const isTop=lc===topLots[0][1]&&topLots[0][1]>1;
+      return`<div class="lot-row"><div class="lot-name">${lot}${isTop?'<span class="flag">top</span>':''}</div><div class="lot-bar-wrap"><div class="lot-bar" style="width:${Math.round(lc/maxL*100)}%;background:${COLORS[i%COLORS.length]}"></div></div><div class="lot-count">${lc}</div></div>`;
+    }).join('')}</div>` : '';
+    return `<div class="driver-block">
+      <div class="driver-header" onclick="${hasLots?`toggleDriver('db-${i}',this)`:''}" style="${hasLots?'':'cursor:default'}">
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <div style="width:${Math.round(count/maxT*120)}px;height:6px;border-radius:3px;background:${COLORS[i%COLORS.length]};flex-shrink:0"></div>
+          <div class="driver-header-label">${driver}</div>
+        </div>
+        <div class="driver-header-right">
+          <div class="driver-count">${count}</div>
+          ${hasLots?'<div class="driver-arrow">▼</div>':''}
+        </div>
+      </div>
+      ${lotHtml}
+    </div>`;
+  }).join('');
+
+  if(driversChart) driversChart.destroy();
+  driversChart = new Chart(document.getElementById('c-drivers'), {
+    type:'bar',
+    data:{labels:top5.map(([d])=>d.length>38?d.slice(0,38)+'...':d),datasets:[{data:top5.map(([,c])=>c),backgroundColor:COLORS.slice(0,top5.length),borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(0,0,0,0.06)'},ticks:{color:'#a09c96'}},y:{grid:{display:false},ticks:{color:'#a09c96',font:{size:11}}},},indexAxis:'y'}
+  });
+}
+
+function toggleDriver(id,el){
+  const body=document.getElementById(id);
+  const arr=el.querySelector('.driver-arrow');
+  if(body.classList.contains('open')){body.classList.remove('open');if(arr)arr.textContent='▼';}
+  else{body.classList.add('open');if(arr)arr.textContent='▲';}
+}
+
+// ── TAB 3: DISPUTES ────────────────────────────────────────────────────────
+function buildDisputesTab() {
+  const { df } = G;
+  const disputes = df.filter(r=>r._isDispute);
+  const total = disputes.length;
+  const vCounts = countBy(disputes,'_vertical');
+  const vOrder = Object.entries(vCounts).sort((a,b)=>b[1]-a[1]);
+
+  document.getElementById('kpi-disputes').innerHTML =
+    mkKPI('Total disputes', total, '', total>0?'bad':'') +
+    vOrder.slice(0,3).map(([v,c])=>mkKPI(v,c,pct(c,total)+'% of disputes','bad')).join('');
+
+  const legColors = vOrder.map((_,i)=>COLORS[i%COLORS.length]);
+  document.getElementById('leg-disp-vert').innerHTML = vOrder.map(([v,c],i)=>`<span class="legend-item"><span class="legend-dot" style="background:${legColors[i]}"></span>${v} ${pct(c,total)}%</span>`).join('');
+  mkDonut('c-disp-vert', vOrder.map(v=>v[0]), vOrder.map(v=>v[1]), legColors);
+
+  // Reasons
+  const rCounts = countBy(disputes,'_driver');
+  const rOrder = Object.entries(rCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  mkBar('c-disp-reason', rOrder.map(([r])=>r.length>25?r.slice(0,25)+'...':r), [{data:rOrder.map(([,c])=>c),backgroundColor:'#e24b4a',borderRadius:4,borderSkipped:false}], {yticks:{stepSize:1}});
+
+  // Lot breakdown per vertical
+  const vertWithDisputes = ['Airport Parking','City Parking','Carwash','Wayplus','General'];
+  let html = '';
+  vertWithDisputes.forEach(v => {
+    const vDisp = disputes.filter(r=>r._vertical===v);
+    if(!vDisp.length) return;
+    const lotCounts = countBy(vDisp,'Lot Name');
+    const topLots = Object.entries(lotCounts).filter(([l])=>l.trim()).sort((a,b)=>b[1]-a[1]);
+    if(!topLots.length) return;
+    const maxL = topLots[0][1];
+    html += `<div class="card"><div class="card-title">${v} — disputes by lot</div>
+      ${topLots.map(([lot,c])=>{
+        const isTop=c===topLots[0][1]&&topLots[0][1]>1;
+        return`<div class="disp-lot"><div class="disp-lot-name">${lot}${isTop?'<span class="flag">top</span>':''}</div><div class="disp-lot-bar-wrap"><div class="disp-lot-bar" style="width:${Math.round(c/maxL*100)}%"></div></div><div class="disp-lot-count">${c}</div></div>`;
+      }).join('')}
+    </div>`;
+  });
+  document.getElementById('disp-lots-container').innerHTML = html;
+}
+
+// ── TAB 4: ESCALATIONS ────────────────────────────────────────────────────
+function buildEscalationsTab() {
+  const { df, tickets } = G;
+  const escs = df.filter(r=>r._isEscalated);
+  const total = escs.length;
+  const closed = escs.filter(r=>String(r['Status']||'').toLowerCase()==='closed').length;
+
+  document.getElementById('kpi-escalations').innerHTML =
+    mkKPI('Total escalations', total, '', 'bad') +
+    mkKPI('Escalation rate', pct(total,tickets.length)+'%', 'of total tickets', 'bad') +
+    mkKPI('Closed', closed, '', 'good') +
+    mkKPI('Still open', total-closed, '', total-closed>0?'bad':'');
+
+  const vCounts = countBy(escs,'_vertical');
+  const vOrder = Object.entries(vCounts).sort((a,b)=>b[1]-a[1]);
+  const legColors = vOrder.map((_,i)=>COLORS[i%COLORS.length]);
+  document.getElementById('leg-esc-vert').innerHTML = vOrder.map(([v,c],i)=>`<span class="legend-item"><span class="legend-dot" style="background:${legColors[i]}"></span>${v} ${pct(c,total)}%</span>`).join('');
+  mkDonut('c-esc-vert', vOrder.map(v=>v[0]), vOrder.map(v=>v[1]), legColors);
+
+  const chCounts = countBy(escs,'Interaction');
+  const chOrder = Object.entries(chCounts).sort((a,b)=>b[1]-a[1]);
+  const chColors = ['#378add','#1d9e75','#ba7517','#e24b4a'];
+  document.getElementById('leg-esc-ch').innerHTML = chOrder.map(([c,n],i)=>`<span class="legend-item"><span class="legend-dot" style="background:${chColors[i]}"></span>${c} ${pct(n,total)}%</span>`).join('');
+  mkDonut('c-esc-ch', chOrder.map(c=>c[0]), chOrder.map(c=>c[1]), chColors);
+
+  const rCounts = countBy(escs,'_driver');
+  const rOrder = Object.entries(rCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  mkBar('c-esc-reasons', rOrder.map(([r])=>r.length>35?r.slice(0,35)+'...':r), [{data:rOrder.map(([,c])=>c),backgroundColor:'#e24b4a',borderRadius:4,borderSkipped:false}], {yticks:{stepSize:1},extra:{indexAxis:'y'}});
+
+  const statusCounts = countBy(escs,'Status');
+  const statusOrder = Object.entries(statusCounts).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('tbl-esc-status').innerHTML = statusOrder.map(([s,c])=>`<tr><td>${s||'Unknown'}</td><td class="num">${c}</td><td class="num"><span class="badge ${s==='Closed'?'g':'a'}">${pct(c,total)}%</span></td></tr>`).join('');
+}
+
+// ── TAB 5: REFUNDS ─────────────────────────────────────────────────────────
+function buildRefundsTab() {
+  const { df } = G;
+  const refunds = df.filter(r=>r._refund);
+  const bciCard = refunds.filter(r=>r._refund==='BCI Card');
+  const aciCard = refunds.filter(r=>r._refund==='ACI Full');
+  const aciPartial = refunds.filter(r=>r._refund==='ACI Partial');
+  const aciDenied = refunds.filter(r=>r._refund==='ACI Denied');
+  const subCancel = refunds.filter(r=>r._refund==='Sub Refund');
+  const sum = arr => arr.reduce((s,r)=>s+(parseFloat(r['Amount'])||0),0);
+
+  document.getElementById('kpi-refunds').innerHTML =
+    mkKPI('Total refund actions', refunds.length) +
+    mkKPI('BCI card refunds', fmt$(sum(bciCard)), bciCard.length+' cases', 'bad') +
+    mkKPI('ACI full refunds', fmt$(sum(aciCard)), aciCard.length+' cases', 'bad') +
+    mkKPI('ACI partial refunds', fmt$(sum(aciPartial)), aciPartial.length+' cases', 'bad') +
+    mkKPI('ACI denied (saved)', fmt$(sum(aciDenied)), aciDenied.length+' cases', 'good') +
+    mkKPI('Sub cancellations', subCancel.length, refunds.filter(r=>r._refund==='Sub No Refund').length+' not refunded');
+
+  const typeCounts = {};
+  refunds.forEach(r=>{ typeCounts[r._refund]=(typeCounts[r._refund]||0)+1; });
+  const typeOrder = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]);
+  const typeColors = {'BCI Card':'#e24b4a','BCI Waybucks':'#378add','ACI Full':'#d85a30','ACI Partial':'#ba7517','ACI Waybucks':'#1d9e75','ACI Denied':'#639922','Sub Refund':'#7f77dd','Sub No Refund':'#888780'};
+  document.getElementById('leg-refund-type').innerHTML = typeOrder.map(([t])=>`<span class="legend-item"><span class="legend-dot" style="background:${typeColors[t]||'#888'}"></span>${t}</span>`).join('');
+  mkDonut('c-refund-type', typeOrder.map(t=>t[0]), typeOrder.map(t=>t[1]), typeOrder.map(t=>typeColors[t[0]]||'#888'));
+
+  const valTypes = ['BCI Card','ACI Full','ACI Partial','ACI Waybucks','ACI Denied'];
+  const vals = valTypes.map(t=>Math.round(sum(refunds.filter(r=>r._refund===t))));
+  mkBar('c-refund-value', valTypes, [{data:vals,backgroundColor:valTypes.map(t=>typeColors[t]||'#888'),borderRadius:4,borderSkipped:false}], {yticks:{callback:v=>'$'+v.toLocaleString()}});
+
+  // By vertical
+  const verts = [...new Set(refunds.map(r=>r._vertical))].filter(v=>v);
+  const refTypes = ['BCI Card','BCI Waybucks','ACI Full','ACI Partial','ACI Denied','Sub Refund'];
+  let tbody='',totals={};
+  refTypes.forEach(t=>totals[t]=0);
+  let grandTotal=0;
+  verts.forEach(v=>{
+    const vr=refunds.filter(r=>r._vertical===v);
+    const counts=refTypes.map(t=>vr.filter(r=>r._refund===t).length);
+    const vTotal=vr.length;
+    grandTotal+=vTotal;
+    counts.forEach((c,i)=>totals[refTypes[i]]+=c);
+    tbody+=`<tr><td>${v}</td>${counts.map(c=>`<td class="num">${c}</td>`).join('')}<td class="num"><b>${vTotal}</b></td></tr>`;
+  });
+  document.getElementById('tbl-refund-vert').innerHTML = tbody;
+  document.getElementById('tbl-refund-footer').innerHTML = `<td>Total</td>${refTypes.map(t=>`<td class="num">${totals[t]}</td>`).join('')}<td class="num">${grandTotal}</td>`;
+}
+
+// ── TAB 6: PLATFORMS ───────────────────────────────────────────────────────
+function buildPlatformsTab() {
+  const { df } = G;
+  const domainCounts = countBy(df,'Domain');
+  delete domainCounts[''];
+  const domainOrder = Object.entries(domainCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const untagged = df.filter(r=>!r['Domain']).length;
+
+  document.getElementById('kpi-platforms').innerHTML =
+    mkKPI('Platforms tracked', domainOrder.length) +
+    mkKPI('Top platform', domainOrder[0]?.[0]||'—', (domainOrder[0]?.[1]||0)+' tickets') +
+    mkKPI('Top share', pct(domainOrder[0]?.[1]||0, df.length)+'%') +
+    mkKPI('Untagged tickets', untagged, 'no domain');
+
+  mkBar('c-platforms', domainOrder.map(d=>d[0]), [{data:domainOrder.map(d=>d[1]),backgroundColor:'#378add',borderRadius:4,borderSkipped:false}]);
+
+  // Platform x vertical table
+  const verticals = [...new Set(df.map(r=>r._vertical))].filter(v=>v&&v!=='Other');
+  const head = document.getElementById('tbl-platform-head');
+  head.innerHTML = `<th>Platform</th>${verticals.map(v=>`<th class="num">${v}</th>`).join('')}<th class="num">Total</th>`;
+
+  const platVerts = {};
+  const totals = {};
+  domainOrder.forEach(([d])=>{
+    platVerts[d]={};
+    verticals.forEach(v=>platVerts[d][v]=0);
+    df.filter(r=>String(r['Domain']||'')==d).forEach(r=>{if(verticals.includes(r._vertical))platVerts[d][r._vertical]++;});
+    totals[d]=df.filter(r=>String(r['Domain']||'')==d).length;
+  });
+
+  document.getElementById('tbl-platform-body').innerHTML = domainOrder.map(([d])=>`<tr><td>${d}</td>${verticals.map(v=>`<td class="num">${platVerts[d][v]||0}</td>`).join('')}<td class="num"><b>${totals[d]}</b></td></tr>`).join('');
+  const vTotals = verticals.map(v=>domainOrder.reduce((s,[d])=>s+(platVerts[d][v]||0),0));
+  const gTotal = domainOrder.reduce((s,[d])=>s+totals[d],0);
+  document.getElementById('tbl-platform-footer').innerHTML = `<td>Total (tagged)</td>${vTotals.map(t=>`<td class="num">${t}</td>`).join('')}<td class="num">${gTotal}</td>`;
+}
+
+// ── TAB 7: TIME PATTERNS ───────────────────────────────────────────────────
+function buildTimeTab() {
+  const { tickets } = G;
+  const hourly = new Array(24).fill(0);
+  tickets.forEach(r => {
+    let d = r['Ticket_created_date'];
+    if(!d) return;
+    let dt = d instanceof Date ? d : new Date(d);
+    if(!isNaN(dt)) hourly[dt.getHours()]++;
+  });
+
+  const peak = hourly.indexOf(Math.max(...hourly));
+  const quiet = hourly.indexOf(Math.min(...hourly.filter(v=>v>0)));
+  const s1 = hourly.slice(19).reduce((s,v)=>s+v,0)+hourly.slice(0,2).reduce((s,v)=>s+v,0);
+  const s2 = hourly.slice(2,11).reduce((s,v)=>s+v,0);
+  const s3 = hourly.slice(10,19).reduce((s,v)=>s+v,0);
+
+  const fmtH = h => h===0?'12a':h<12?h+'a':h===12?'12p':(h-12)+'p';
+
+  document.getElementById('kpi-time').innerHTML =
+    mkKPI('Peak hour (PST)', fmtH(peak), hourly[peak]+' tickets') +
+    mkKPI('Quietest hour', fmtH(quiet), hourly[quiet]+' tickets') +
+    mkKPI('Shift 1 volume', s1, '6:30 PM–3:30 AM PST') +
+    mkKPI('Shift 2 volume', s2, '2:00 AM–11:00 AM PST') +
+    mkKPI('Shift 3 volume', s3, '10:00 AM–7:00 PM PST');
+
+  function shiftColor(h){if(h>=19||h<2)return'#B5D4F4';if(h>=2&&h<10)return'#C0DD97';if(h>=10&&h<19)return'#FAC775';return'#B5D4F4';}
+  mkBar('c-hourly', hourly.map((_,i)=>fmtH(i)), [{data:hourly,backgroundColor:hourly.map((_,i)=>shiftColor(i)),borderRadius:3,borderSkipped:false}], {xticks:{maxRotation:0,font:{size:10}}});
+}
+
+// ── TAB 8: AGENTS ─────────────────────────────────────────────────────────
+function buildAgentTab() {
+  const { df, tickets, fcrTickets } = G;
+
+  // FCR per agent
+  const agentFCR = {};
+  fcrTickets.forEach(r => {
+    const a = String(r['Agent Name']||'');
+    if(!agentFCR[a]) agentFCR[a]={t:0,f:0};
+    agentFCR[a].t++;
+    if(r._isFCR) agentFCR[a].f++;
+  });
+
+  // Interactions per ticket per agent
+  const agentTicketData = {};
+  tickets.forEach(r => {
+    const a = String(r['Agent Name']||'');
+    if(!agentTicketData[a]) agentTicketData[a]={tickets:0,totalInts:0,multi:0};
+    agentTicketData[a].tickets++;
+    agentTicketData[a].totalInts += r._totalInts;
+    if(r._followups>0) agentTicketData[a].multi++;
+  });
+
+  // Main agent summary
+  const agentMap = {};
+  df.forEach(r => {
+    const a = String(r['Agent Name']||'');
+    if(!a) return;
+    if(!agentMap[a]) agentMap[a]={name:a,total:0,calls:0,emails:0,chats:0,disputes:0,escalations:0};
+    agentMap[a].total++;
+    const ch = String(r['Interaction']||'');
+    if(ch==='Call') agentMap[a].calls++;
+    else if(ch==='Email') agentMap[a].emails++;
+    else if(ch==='Chat') agentMap[a].chats++;
+    else if(ch==='Dispute') agentMap[a].disputes++;
+    if(r._isEscalated) agentMap[a].escalations++;
+  });
+
+  G.agentData = Object.values(agentMap).map(a => {
+    const fcr = agentFCR[a.name];
+    const td = agentTicketData[a.name];
+    return {
+      ...a,
+      esc_rate: pct(a.escalations,a.total),
+      fcr_pct: fcr ? pct(fcr.f,fcr.t) : 100,
+      avg_ints: td ? Math.round(td.totalInts/td.tickets*100)/100 : 1,
+      multi_pct: td ? pct(td.multi,td.tickets) : 0
+    };
+  }).sort((a,b)=>b.total-a.total);
+
+  // Complexity chart
+  const complex = [...G.agentData].filter(a=>a.total>=5).sort((a,b)=>b.avg_ints-a.avg_ints).slice(0,10);
+  mkBar('c-ipt', complex.map(a=>a.name), [{data:complex.map(a=>a.avg_ints),backgroundColor:complex.map(a=>a.avg_ints>=1.5?'#e24b4a':a.avg_ints>=1.3?'#ba7517':'#1d9e75'),borderRadius:4,borderSkipped:false}], {yscale:{min:1},yticks:{callback:v=>v+'x'}});
+
+  const total = G.agentData.reduce((s,a)=>s+a.total,0);
+  const avgFCR = fcrTickets.length ? pct(fcrTickets.filter(r=>r._isFCR).length,fcrTickets.length) : 0;
+  const belowFCR = G.agentData.filter(a=>a.fcr_pct<FCR_TARGET && a.total>=5).length;
+  const highEsc = G.agentData.filter(a=>a.esc_rate>5).length;
+  const highComplex = G.agentData.filter(a=>a.avg_ints>1.4 && a.total>=5).length;
+
+  document.getElementById('kpi-agents').innerHTML =
+    mkKPI('Total agents', G.agentData.length) +
+    mkKPI('Avg tickets/agent', Math.round(total/G.agentData.length)) +
+    mkKPI('FCR below 80%', belowFCR+' agents', '(min 5 tickets)', 'bad') +
+    mkKPI('High esc rate (>5%)', highEsc+' agents', '', 'bad') +
+    mkKPI('High complexity (>1.4x)', highComplex+' agents', 'avg ints/ticket', 'bad');
+
+  document.getElementById('agent-footer').innerHTML = `<td>Total — ${G.agentData.length} agents</td><td class="num">${total}</td><td class="num">${G.agentData.reduce((s,a)=>s+a.calls,0)}</td><td class="num">${G.agentData.reduce((s,a)=>s+a.emails,0)}</td><td class="num">${G.agentData.reduce((s,a)=>s+a.chats,0)}</td><td class="num">${G.agentData.reduce((s,a)=>s+a.disputes,0)}</td><td class="num">${pct(G.agentData.reduce((s,a)=>s+a.escalations,0),total)}%</td><td class="num">${avgFCR}%</td><td class="num">—</td><td class="num">—</td>`;
+
+  renderAgents();
+}
+
+function sortAgents(k) {
+  if(agentSortKey===k) agentSortAsc=!agentSortAsc;
+  else { agentSortKey=k; agentSortAsc=false; }
+  document.querySelectorAll('[id^="arr-"]').forEach(el=>el.textContent='');
+  document.getElementById('arr-'+k).textContent = agentSortAsc?'↑':'↓';
+  renderAgents();
+}
+
+function renderAgents() {
+  if(!G.agentData) return;
+  const q = (document.getElementById('agent-search').value||'').toLowerCase();
+  const f = document.getElementById('agent-filter').value;
+  let d = G.agentData.filter(a => {
+    if(!a.name.toLowerCase().includes(q)) return false;
+    if(f==='fcr-low') return a.fcr_pct<FCR_TARGET && a.total>=5;
+    if(f==='esc-high') return a.esc_rate>5;
+    if(f==='complex') return a.avg_ints>1.4 && a.total>=5;
+    return true;
+  });
+  const ki = {name:'name',total:'total',calls:'calls',emails:'emails',chats:'chats',disputes:'disputes',esc_rate:'esc_rate',fcr_pct:'fcr_pct',avg_ints:'avg_ints',multi_pct:'multi_pct'};
+  const sk = ki[agentSortKey]||'total';
+  d.sort((a,b)=>sk==='name'?(agentSortAsc?a.name>b.name:a.name<b.name)?1:-1:agentSortAsc?a[sk]-b[sk]:b[sk]-a[sk]);
+  document.getElementById('agent-count').textContent = d.length+' agents';
+  document.getElementById('agent-tbody').innerHTML = d.map((a,i)=>{
+    const escCls=a.esc_rate>5?'r':a.esc_rate>2?'a':'g';
+    const fcrCls=a.fcr_pct>=80?'g':a.fcr_pct>=70?'a':'r';
+    const iptCls=a.avg_ints>=1.5?'r':a.avg_ints>=1.3?'a':'g';
+    return`<tr>
+      <td>${i+1}. ${a.name}</td>
+      <td class="num" style="font-weight:600">${a.total}</td>
+      <td class="num">${a.calls}</td><td class="num">${a.emails}</td>
+      <td class="num">${a.chats}</td><td class="num">${a.disputes}</td>
+      <td class="num"><span class="badge ${escCls}">${a.esc_rate}%</span></td>
+      <td class="num"><span class="badge ${fcrCls}">${a.fcr_pct}%</span></td>
+      <td class="num"><span class="badge ${iptCls}">${a.avg_ints}x</span></td>
+      <td class="num">${a.multi_pct}%</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── UI HELPERS ─────────────────────────────────────────────────────────────
+function showTab(id, el) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(el) el.classList.add('active');
+}
+</script>
+</body>
+</html>
