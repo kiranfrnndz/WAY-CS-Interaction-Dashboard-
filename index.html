@@ -535,7 +535,7 @@ function buildTrendSection(){
     mkBar('c-trend',labels,[{data,backgroundColor:'#7f77dd',borderRadius:4,borderSkipped:false}]);return;
   }
   const dayMap={};tickets.forEach(r=>{if(r._dateStr)dayMap[r._dateStr]=(dayMap[r._dateStr]||0)+1;});
-  const labels=Object.keys(dayMap).sort(),data=labels.map(k=>dayMap[k]);
+  const sortedDates=Object.keys(dayMap).sort((a,b)=>new Date(a)-new Date(b));const labels=sortedDates.map(d=>{const dt=new Date(d+"T00:00:00");return(dt.getMonth()+1)+"/"+(dt.getDate());});const data=sortedDates.map(k=>dayMap[k]);
   document.getElementById('trend-chart-title').textContent=selectedPeriod==='weekly'?'Daily ticket volume (this week)':'Daily ticket volume trend';
   if(charts['c-trend'])charts['c-trend'].destroy();
   charts['c-trend']=new Chart(document.getElementById('c-trend'),{type:'line',data:{labels,datasets:[{data,borderColor:'#378add',backgroundColor:'rgba(55,138,221,0.1)',borderWidth:2,pointRadius:3,pointBackgroundColor:'#378add',fill:true,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#a09c96',font:{size:10},maxRotation:45}},y:{grid:{color:'rgba(0,0,0,0.06)'},ticks:{color:'#a09c96'}}}}});
@@ -548,7 +548,7 @@ function buildDayFilterBar(){
   const bar=document.getElementById('day-filter-bar');
   bar.innerHTML='<label>Filter by day:</label>';
   const allBtn=document.createElement('button');allBtn.className='day-chip all-chip'+(selectedDay==='all'?' active':'');allBtn.textContent='All days';allBtn.onclick=function(){filterByDay('all',this);};bar.appendChild(allBtn);
-  G.uniqueDays.forEach(d=>{const btn=document.createElement('button');btn.className='day-chip'+(selectedDay===d?' active':'');btn.textContent=d.slice(5);btn.onclick=function(){filterByDay(d,this);};bar.appendChild(btn);});
+  [...G.uniqueDays].sort((a,b)=>new Date(a)-new Date(b)).forEach(d=>{const btn=document.createElement('button');btn.className='day-chip'+(selectedDay===d?' active':'');const dt=new Date(d+'T00:00:00');btn.textContent=(dt.getMonth()+1)+'/'+(dt.getDate());btn.onclick=function(){filterByDay(d,this);};bar.appendChild(btn);});
 }
 
 function filterByDay(day,el){
