@@ -311,8 +311,9 @@
         <div class="card"><div class="card-title">By vertical</div><div class="legend" id="leg-esc-vert"></div><div class="chart-wrap" style="height:170px"><canvas id="c-esc-vert"></canvas></div></div>
         <div class="card"><div class="card-title">By channel</div><div class="legend" id="leg-esc-ch"></div><div class="chart-wrap" style="height:170px"><canvas id="c-esc-ch"></canvas></div></div>
       </div>
-      <div class="card"><div class="card-title">Top escalation reasons</div><div class="chart-wrap" style="height:240px"><canvas id="c-esc-reasons"></canvas></div></div>
+      <div class="card"><div class="card-title">Top escalation reasons (overall)</div><div class="chart-wrap" style="height:240px"><canvas id="c-esc-reasons"></canvas></div></div>
       <div class="card"><div class="card-title">Escalation status</div><div class="tbl-wrap"><table><thead><tr><th>Status</th><th class="num">Count</th><th class="num">%</th></tr></thead><tbody id="tbl-esc-status"></tbody></table></div></div>
+      <div id="esc-vertical-breakdown"></div>
     </div>
 
     <!-- TAB 5: REFUNDS -->
@@ -456,7 +457,24 @@ function getWeekLabel(dateStr){if(!dateStr)return'';const d=new Date(dateStr);co
 
 function buildDashboard(raw){
   const df=raw.map(r=>({...r,_vertical:mapVertical(r),_refund:tagRefund(r['Action']),
-    _driver:(String(r['Reason']||'').trim()+' > '+String(r['Sub Reason']||'').trim()).replace(/ > $/,'').replace(/^ > /,''),
+    _driver:(()=>{
+      const reason=(String(r['Reason']||'').trim()+' > '+String(r['Sub Reason']||'').trim()).replace(/ > $/,'').replace(/^ > /,'').replace(/\s+/g,' ').trim();
+      const sv=String(r['SubVertical']||'').trim();
+      // For parking rows, append the parking type (Daily / Hourly / Airport / etc.) so
+      // "Lot Issue > Lot Full" under Airport and "Lot Issue > Lot Full" under City don't
+      // look like duplicates — they're different products
+      const v=String(r['Vertical']||'').trim();
+      if(v==='Parking'&&reason){
+        // Use TKD_Pricing_Type (Daily / Hourly / Monthly) to distinguish
+        // e.g. Airport Parking Daily vs City Parking Hourly
+        // so "Lot Issue > Lot Full" doesn't look like a duplicate across verticals
+        const pricingType=String(r['TKD_Pricing_Type']||'').trim();
+        const vertLabel=sv.includes('City')?'City':'Airport';
+        const typeLabel=pricingType?`${vertLabel} ${pricingType}`:(sv.includes('City')?'City':'Airport');
+        return`${reason} [${typeLabel}]`;
+      }
+      return reason;
+    })(),
     _isTicket:!!r['Ticket ID'],_isEscalated:String(r['TKT_IssueReason']||'')==='Escalated',
     _isDispute:String(r['Interaction']||'')==='Dispute',_isReview:String(r['SubVertical']||'').toLowerCase().includes('review'),
     _dateStr:getDateStr(r)}));
@@ -651,6 +669,72 @@ function buildEscalationsTab(){
   mkBar('c-esc-reasons',rOrder.map(([r])=>r.length>35?r.slice(0,35)+'...':r),[{data:rOrder.map(([,c])=>c),backgroundColor:'#e24b4a',borderRadius:4,borderSkipped:false}],{yticks:{stepSize:1},extra:{indexAxis:'y'}});
   const statusCounts=countBy(escs,'Status');const statusOrder=Object.entries(statusCounts).sort((a,b)=>b[1]-a[1]);
   document.getElementById('tbl-esc-status').innerHTML=statusOrder.map(([s,c])=>`<tr><td>${s||'Unknown'}</td><td class="num">${c}</td><td class="num"><span class="badge ${s==='Closed'?'g':'a'}">${pct(c,total)}%</span></td></tr>`).join('');
+
+  // ── Vertical-wise breakdown with reasons + top 5 agents ──
+  const verticals=vOrder.map(([v])=>v);
+  let html='';
+  verticals.forEach((vert,vi)=>{
+    const vEscs=escs.filter(r=>r._vertical===vert);
+    if(!vEscs.length)return;
+    const vColor=COLORS[vi%COLORS.length];
+    const reasonCounts={};
+    vEscs.forEach(r=>{reasonCounts[r._driver]=(reasonCounts[r._driver]||0)+1;});
+    const topReasons=Object.entries(reasonCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const maxR=topReasons[0]?.[1]||1;
+
+    const reasonsHtml=topReasons.map(([ reason, count],ri)=>{
+      // Top 5 agents for this reason in this vertical
+      const lotCounts={};
+      vEscs.filter(r=>r._driver===reason).forEach(r=>{
+        const l=String(r['Lot Name']||'').trim();
+        if(l)lotCounts[l]=(lotCounts[l]||0)+1;
+      });
+      const topLots=Object.entries(lotCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const maxL=topLots[0]?.[1]||1;
+      const uid=`ev-${vi}-${ri}`;
+
+      const lotRows=topLots.map(([lot,lc],li)=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
+          <div style="width:18px;height:18px;border-radius:4px;background:${COLORS[li%COLORS.length]};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="font-size:8px;color:#fff;font-weight:600">${li+1}</span>
+          </div>
+          <div style="flex:1;font-size:12px;color:var(--text)">${lot}</div>
+          <div style="width:80px;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;flex-shrink:0;">
+            <div style="width:${Math.round(lc/maxL*100)}%;height:100%;background:${COLORS[li%COLORS.length]};border-radius:3px"></div>
+          </div>
+          <div style="font-size:11px;font-weight:600;color:var(--text);min-width:24px;text-align:right;font-family:'DM Mono',monospace">${lc}</div>
+          <div style="font-size:10px;color:var(--text3);min-width:30px;text-align:right">${pct(lc,count)}%</div>
+        </div>`).join('');
+
+      return`<div style="border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;overflow:hidden;">
+        <div class="driver-header" onclick="toggleDriver('${uid}',this)" style="padding:10px 12px;">
+          <div style="display:flex;align-items:center;gap:10px;flex:1">
+            <div style="width:${Math.round(count/maxR*100)}px;max-width:100px;min-width:4px;height:6px;border-radius:3px;background:${vColor};flex-shrink:0"></div>
+            <div class="driver-header-label" style="font-size:12px">${reason||'Unspecified'}</div>
+          </div>
+          <div class="driver-header-right">
+            <span style="font-size:10px;color:var(--text3);margin-right:4px">${pct(count,vEscs.length)}%</span>
+            <div class="driver-count">${count}</div>
+            <div class="driver-arrow">▼</div>
+          </div>
+        </div>
+        <div class="driver-body" id="${uid}" style="padding:10px 14px;">
+          <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Top lots contributing this issue</div>
+          ${topLots.length?lotRows:'<div style="font-size:12px;color:var(--text3);padding:4px 0">No lot data available</div>'}
+        </div>
+      </div>`;
+    }).join('');
+
+    html+=`<div class="card" style="border-left:3px solid ${vColor}">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>${vert} — escalation reasons</span>
+        <span style="font-size:11px;color:var(--text2);font-weight:500;text-transform:none;letter-spacing:0">${vEscs.length} escalations · ${pct(vEscs.length,total)}% of total</span>
+      </div>
+      ${reasonsHtml}
+    </div>`;
+  });
+
+  document.getElementById('esc-vertical-breakdown').innerHTML=html;
   G._escalationData={total,closed,vOrder,rOrder,statusOrder};
 }
 
@@ -758,41 +842,276 @@ function downloadExcel(){
   },100);
 }
 
-// ── PDF Export ──
+// ── PDF Export (Rich styled version) ──
 function downloadPDF(){
   document.getElementById('downloadDropdown').classList.remove('open');
   if(!G.df)return;showExportOverlay('Building PDF report…');
   setTimeout(()=>{
     try{
-      const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+      const{jsPDF}=window.jspdf;
+      const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
       const date=G.periodLabel||'Report';const period=G.selectedPeriod||'daily';
       const{df,tickets,fcrTickets}=G;const d=G._overviewData;
-      const pageW=doc.internal.pageSize.getWidth();const margin=14;let y=0;
-      function addPage(){doc.addPage();y=16;}
-      function header(){doc.setFillColor(26,25,22);doc.rect(0,0,pageW,16,'F');doc.setTextColor(255,255,255);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('CCD Dashboard',margin,10.5);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(160,156,150);doc.text('Way.com · '+date+' · '+period.toUpperCase(),margin,14);doc.text('FCR Target: 80%',pageW-margin,10.5,{align:'right'});y=22;}
-      function secTitle(t){if(y>255)addPage();doc.setFillColor(240,237,232);doc.rect(margin,y,pageW-margin*2,7,'F');doc.setTextColor(100,95,90);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(t.toUpperCase(),margin+3,y+4.8);y+=10;}
-      function kpiRow(items){const colW=(pageW-margin*2)/items.length;items.forEach((item,i)=>{const x=margin+i*colW;doc.setFillColor(255,255,255);doc.setDrawColor(226,221,214);doc.roundedRect(x+1,y,colW-2,16,1.5,1.5,'FD');doc.setTextColor(160,156,150);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(item.label,x+4,y+5);const vc=item.good?[29,158,117]:item.bad?[226,75,74]:[26,25,22];doc.setTextColor(...vc);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(String(item.value),x+4,y+12);if(item.sub){doc.setTextColor(160,156,150);doc.setFontSize(6.5);doc.setFont('helvetica','normal');doc.text(item.sub,x+4,y+15.5);}});y+=20;}
-      function autoTable(headers,rows,opts={}){if(!rows.length)return;doc.autoTable({startY:y,head:[headers],body:rows,margin:{left:margin,right:margin},styles:{fontSize:7.5,cellPadding:2.5,font:'helvetica',textColor:[26,25,22]},headStyles:{fillColor:[240,237,232],textColor:[100,95,90],fontStyle:'bold',fontSize:7},alternateRowStyles:{fillColor:[250,249,246]},tableLineColor:[226,221,214],tableLineWidth:0.1,...opts});y=doc.lastAutoTable.finalY+6;}
+      const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
+      const M=13;let y=0;
 
-      header();
-      secTitle('Overview — '+period.toUpperCase()+' · '+date);
-      kpiRow([{label:'Total Tickets',value:d.total.toLocaleString()},{label:'Total Interactions',value:d.totalInts.toLocaleString()},{label:'Overall FCR',value:d.fcrPct+'%',sub:d.fcrPct>=FCR_TARGET?'Above target':'Below target',good:d.fcrPct>=FCR_TARGET,bad:d.fcrPct<FCR_TARGET},{label:'Escalations',value:d.escs,sub:pct(d.escs,d.total)+'% rate',bad:true}]);
-      kpiRow([{label:'Calls',value:d.calls},{label:'Emails',value:d.emails},{label:'Chats',value:d.chats},{label:'Disputes',value:d.disputes,bad:true}]);
-      if(period!=='daily'&&G.uniqueDays.length){
-        secTitle('Ticket volume trend');const dayMap={};tickets.forEach(r=>{if(r._dateStr)dayMap[r._dateStr]=(dayMap[r._dateStr]||0)+1;});autoTable(['Date','Tickets'],G.uniqueDays.map(d=>[d,dayMap[d]||0]),{columnStyles:{1:{halign:'right'}}});
-        if(period==='monthly'){secTitle('Weekly rollup');const wkMap={};tickets.forEach(r=>{const wk=getWeekLabel(r._dateStr);if(wk)wkMap[wk]=(wkMap[wk]||0)+1;});autoTable(['Week','Tickets'],Object.entries(wkMap).map(([wk,c])=>[wk,c]),{columnStyles:{1:{halign:'right'}}});}
+      // ── colour palette (matches dashboard) ──
+      const C={
+        bg:[244,243,239],surface:[255,255,255],border:[226,221,214],border2:[204,200,192],
+        text:[26,25,22],text2:[107,103,96],text3:[160,156,150],
+        green:[29,158,117],greenBg:[234,243,222],greenText:[39,80,10],
+        red:[226,75,74],redBg:[252,235,235],redText:[121,31,31],
+        amber:[186,117,23],amberBg:[250,238,218],amberText:[99,56,6],
+        blue:[55,138,221],purple:[127,119,221],dark:[26,25,22],
+      };
+
+      // ── helpers ──
+      function rgb(arr){return{r:arr[0],g:arr[1],b:arr[2]};}
+      function fill(arr){doc.setFillColor(arr[0],arr[1],arr[2]);}
+      function stroke(arr){doc.setDrawColor(arr[0],arr[1],arr[2]);}
+      function textC(arr){doc.setTextColor(arr[0],arr[1],arr[2]);}
+      function chk(minH=20){if(y+minH>H-16){addPage();}}
+
+      function addPage(){
+        doc.addPage();
+        // header bar
+        fill(C.dark);doc.rect(0,0,W,18,'F');
+        textC([255,255,255]);doc.setFontSize(10);doc.setFont('helvetica','bold');
+        doc.text('CCD Dashboard',M,11);
+        doc.setFont('helvetica','normal');doc.setFontSize(7.5);textC(C.text3);
+        doc.text('Way.com · Customer Operations · '+date,M,16);
+        // period pill
+        const pillColors={daily:C.blue,weekly:C.purple,monthly:C.green};
+        const pc=pillColors[period]||C.blue;
+        fill(pc);doc.roundedRect(W-M-20,3,20,7,1.5,1.5,'F');
+        textC([255,255,255]);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+        doc.text(period.toUpperCase(),W-M-10,7.8,{align:'center'});
+        y=24;
       }
-      secTitle('Vertical Summary');const vRows=[];['Airport Parking','City Parking','Wayplus','General','Insurance','Carwash','R&M','Gas'].forEach(v=>{const vT=tickets.filter(r=>r._vertical===v);if(!vT.length)return;const vI=df.filter(r=>r._vertical===v),vF=fcrTickets.filter(r=>r._vertical===v);vRows.push([v,vT.length,vI.length,vI.filter(r=>r['Interaction']==='Call').length,vI.filter(r=>r['Interaction']==='Email').length,vI.filter(r=>r['Interaction']==='Chat').length,vI.filter(r=>r['Interaction']==='Dispute').length,vF.length?pct(vF.filter(r=>r._isFCR).length,vF.length)+'%':'—']);});autoTable(['Vertical','Tickets','Interactions','Calls','Emails','Chats','Disputes','FCR'],vRows,{columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'},6:{halign:'right'},7:{halign:'right'}}});
-      addPage();header();
-      if(G._escalationData){const e=G._escalationData;secTitle('Escalations');kpiRow([{label:'Total',value:e.total,bad:true},{label:'Esc Rate',value:pct(e.total,tickets.length)+'%',bad:true},{label:'Closed',value:e.closed,good:true},{label:'Still Open',value:e.total-e.closed,bad:e.total-e.closed>0}]);autoTable(['Escalation Reason','Count'],e.rOrder.map(([r,c])=>[r,c]),{columnStyles:{1:{halign:'right'}}});}
-      if(G._disputeData){const dd=G._disputeData;secTitle('Disputes');kpiRow([{label:'Total Disputes',value:dd.total,bad:true}]);autoTable(['Vertical','Count','%'],dd.vOrder.map(([v,c])=>[v,c,pct(c,dd.total)+'%']),{columnStyles:{1:{halign:'right'},2:{halign:'right'}}});autoTable(['Top Reasons','Count'],dd.rOrder.map(([r,c])=>[r,c]),{columnStyles:{1:{halign:'right'}}});}
-      addPage();header();
-      if(G._refundData){const rD=G._refundData;secTitle('Refunds');kpiRow([{label:'Total Actions',value:rD.refunds.length},{label:'BCI Card ($)',value:fmt$(rD.sum(rD.bciCard)),bad:true},{label:'ACI Full ($)',value:fmt$(rD.sum(rD.aciCard)),bad:true},{label:'ACI Denied/Saved ($)',value:fmt$(rD.sum(rD.aciDenied)),good:true}]);const rTypes=['BCI Card','BCI Waybucks','ACI Full','ACI Partial','ACI Denied','Sub Refund'];const refRows=[];rD.verts.forEach(v=>{const vr=rD.refunds.filter(r=>r._vertical===v);refRows.push([v,...rTypes.map(t=>vr.filter(r=>r._refund===t).length),vr.length]);});autoTable(['Vertical',...rTypes,'Total'],refRows,{columnStyles:Object.fromEntries([...rTypes,'Total'].map((_,i)=>[i+1,{halign:'right'}]))});}
-      secTitle('Agent Productivity');if(G.agentData&&G.agentData.length)autoTable(['Agent','Total','Calls','Emails','Chats','Disputes','Esc %','FCR %','Ints/Ticket'],G.agentData.slice(0,40).map(a=>[a.name,a.total,a.calls,a.emails,a.chats,a.disputes,a.esc_rate+'%',a.fcr_pct+'%',a.avg_ints+'x']),{styles:{fontSize:7},columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'},6:{halign:'right'},7:{halign:'right'},8:{halign:'right'}}});
-      const tp=doc.internal.getNumberOfPages();for(let i=1;i<=tp;i++){doc.setPage(i);doc.setTextColor(160,156,150);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(`Page ${i} of ${tp}`,pageW/2,doc.internal.pageSize.getHeight()-6,{align:'center'});doc.text('CCD Dashboard · Way.com',margin,doc.internal.pageSize.getHeight()-6);doc.text(date,pageW-margin,doc.internal.pageSize.getHeight()-6,{align:'right'});}
-      doc.save(`CCD-${period}-${date.replace(/[^a-zA-Z0-9]/g,'-')}.pdf`);hideExportOverlay();
+
+      function secBar(title,accent){
+        chk(14);
+        fill(C.bg);doc.rect(M,y,W-M*2,8,'F');
+        stroke(C.border);doc.setLineWidth(0.1);doc.rect(M,y,W-M*2,8,'S');
+        // left accent stripe
+        fill(accent||C.blue);doc.rect(M,y,2.5,8,'F');
+        textC(C.text2);doc.setFontSize(8);doc.setFont('helvetica','bold');
+        doc.text(title.toUpperCase(),M+6,y+5.3);
+        y+=11;
+      }
+
+      // KPI tiles — 4 per row
+      function kpiTiles(items){
+        chk(22);
+        const cols=items.length,tw=(W-M*2)/cols;
+        items.forEach((item,i)=>{
+          const x=M+i*tw,th=20;
+          fill(C.surface);stroke(C.border);doc.setLineWidth(0.15);
+          doc.roundedRect(x+0.8,y,tw-1.6,th,1.5,1.5,'FD');
+          // top colour stripe
+          const sc=item.good?C.green:item.bad?C.red:C.blue;
+          fill(sc);doc.rect(x+0.8,y,tw-1.6,1.5,'F');
+          // label
+          textC(C.text3);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
+          doc.text(item.label,x+3,y+5.5);
+          // value
+          textC(item.good?C.green:item.bad?C.red:C.text);
+          doc.setFontSize(item.value.length>6?11:14);doc.setFont('helvetica','bold');
+          doc.text(String(item.value),x+3,y+13.5);
+          // sub
+          if(item.sub){textC(C.text3);doc.setFontSize(6);doc.setFont('helvetica','normal');doc.text(item.sub,x+3,y+18);}
+        });
+        y+=23;
+      }
+
+      // Mini horizontal bar chart
+      function miniBarChart(labels,values,color){
+        chk(labels.length*7+6);
+        const maxV=Math.max(...values,1);
+        const barMaxW=W-M*2-35;
+        labels.forEach((lbl,i)=>{
+          const bw=Math.max(2,Math.round(values[i]/maxV*barMaxW));
+          const row=y+i*7;
+          // label
+          textC(C.text);doc.setFontSize(7);doc.setFont('helvetica','normal');
+          const truncLbl=lbl.length>32?lbl.slice(0,32)+'…':lbl;
+          doc.text(truncLbl,M,row+4.5);
+          // bar bg
+          fill(C.bg);doc.roundedRect(M+33,row+1,barMaxW,4,1,1,'F');
+          // bar fill
+          fill(color||C.blue);doc.roundedRect(M+33,row+1,bw,4,1,1,'F');
+          // value
+          textC(C.text2);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+          doc.text(String(values[i]),M+33+barMaxW+2,row+4.5);
+        });
+        y+=labels.length*7+4;
+      }
+
+      // FCR badge colour helper for table cells
+      function fcrColor(pctStr){
+        const v=parseFloat(pctStr);if(isNaN(v))return null;
+        return v>=80?C.green:v>=70?C.amber:C.red;
+      }
+      function escColor(pctStr){
+        const v=parseFloat(pctStr);if(isNaN(v))return null;
+        return v>5?C.red:v>2?C.amber:C.green;
+      }
+
+      // Rich autoTable wrapper
+      function richTable(headers,rows,opts={}){
+        if(!rows.length)return;
+        chk(20);
+        doc.autoTable({
+          startY:y,head:[headers],body:rows,
+          margin:{left:M,right:M},
+          styles:{fontSize:7.5,cellPadding:{top:2.5,right:3,bottom:2.5,left:3},font:'helvetica',textColor:C.text,lineColor:C.border,lineWidth:0.1},
+          headStyles:{fillColor:C.dark,textColor:[255,255,255],fontStyle:'bold',fontSize:7,cellPadding:{top:3,right:3,bottom:3,left:3}},
+          alternateRowStyles:{fillColor:[248,247,244]},
+          didParseCell:function(data){
+            if(opts.colorCols&&data.section==='body'){
+              const col=data.column.index,val=String(data.cell.raw||'');
+              if(opts.colorCols.fcr&&opts.colorCols.fcr.includes(col)){const c=fcrColor(val);if(c){data.cell.styles.textColor=c;data.cell.styles.fontStyle='bold';}}
+              if(opts.colorCols.esc&&opts.colorCols.esc.includes(col)){const c=escColor(val);if(c){data.cell.styles.textColor=c;data.cell.styles.fontStyle='bold';}}
+              if(opts.colorCols.red&&opts.colorCols.red.includes(col)&&parseFloat(val)>0){data.cell.styles.textColor=C.red;}
+            }
+          },
+          ...(opts.tableOpts||{})
+        });
+        y=doc.lastAutoTable.finalY+5;
+      }
+
+      // page footer
+      function footers(){
+        const tp=doc.internal.getNumberOfPages();
+        for(let i=1;i<=tp;i++){
+          doc.setPage(i);
+          fill(C.bg);doc.rect(0,H-10,W,10,'F');
+          stroke(C.border);doc.setLineWidth(0.1);doc.line(M,H-10,W-M,H-10);
+          textC(C.text3);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
+          doc.text('CCD Dashboard · Way.com · Customer Operations',M,H-4.5);
+          doc.text(`Page ${i} of ${tp}`,W/2,H-4.5,{align:'center'});
+          doc.text(date,W-M,H-4.5,{align:'right'});
+        }
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // PAGE 1 — COVER + OVERVIEW
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // Cover hero block
+      fill(C.dark);doc.rect(0,0,W,52,'F');
+      // decorative accent bar
+      const pillColors={daily:C.blue,weekly:C.purple,monthly:C.green};
+      fill(pillColors[period]||C.blue);doc.rect(0,0,3,52,'F');
+      // Brand
+      textC([255,255,255]);doc.setFontSize(22);doc.setFont('helvetica','bold');doc.text('CCD Dashboard',M+6,22);
+      doc.setFont('helvetica','normal');doc.setFontSize(9);textC(C.text3);doc.text('Way.com · Customer Operations',M+6,30);
+      // date + period badge
+      doc.setFontSize(11);textC([255,255,255]);doc.setFont('helvetica','bold');doc.text(date,M+6,42);
+      fill(pillColors[period]||C.blue);doc.roundedRect(M+6+doc.getTextWidth(date)+4,36,22,8,2,2,'F');
+      textC([255,255,255]);doc.setFontSize(7);doc.setFont('helvetica','bold');
+      doc.text(period.toUpperCase(),M+6+doc.getTextWidth(date)+4+11,41.5,{align:'center'});
+      // FCR target badge
+      fill(C.green);doc.roundedRect(W-M-28,36,28,8,2,2,'F');
+      textC([255,255,255]);doc.setFontSize(7);doc.setFont('helvetica','bold');doc.text('FCR TARGET: 80%',W-M-14,41.5,{align:'center'});
+      y=58;
+
+      secBar('Overview',C.blue);
+      kpiTiles([
+        {label:'Total Tickets',value:d.total.toLocaleString()},
+        {label:'Total Interactions',value:d.totalInts.toLocaleString()},
+        {label:'Overall FCR',value:d.fcrPct+'%',sub:d.fcrPct>=FCR_TARGET?'Above target ✓':'Below target',good:d.fcrPct>=FCR_TARGET,bad:d.fcrPct<FCR_TARGET},
+        {label:'Escalations',value:d.escs.toLocaleString(),sub:pct(d.escs,d.total)+'% of tickets',bad:true}
+      ]);
+      kpiTiles([
+        {label:'Calls',value:d.calls.toLocaleString()},
+        {label:'Emails',value:d.emails.toLocaleString()},
+        {label:'Chats',value:d.chats.toLocaleString()},
+        {label:'Disputes',value:d.disputes.toLocaleString(),sub:'flagged',bad:d.disputes>0}
+      ]);
+      if(period!=='daily'&&G.uniqueDays.length){
+        const days=G.uniqueDays.length||1;
+        kpiTiles([{label:'Days in Period',value:days},{label:'Avg Tickets/Day',value:Math.round(d.total/days).toLocaleString()},{label:'Avg Interactions/Day',value:Math.round(d.totalInts/days).toLocaleString()},{label:'Avg Disputes/Day',value:Math.round(d.disputes/days).toLocaleString(),bad:d.disputes>0}]);
+      }
+
+      secBar('Vertical Summary',C.purple);
+      const verts=['Airport Parking','City Parking','Wayplus','General','Insurance','Carwash','R&M','Gas'];
+      const vRows=[];
+      verts.forEach(v=>{
+        const vT=tickets.filter(r=>r._vertical===v);if(!vT.length)return;
+        const vI=df.filter(r=>r._vertical===v),vF=fcrTickets.filter(r=>r._vertical===v);
+        const fcrP=vF.length?pct(vF.filter(r=>r._isFCR).length,vF.length)+'%':'—';
+        vRows.push([v,vT.length,vI.length,vI.filter(r=>r['Interaction']==='Call').length,vI.filter(r=>r['Interaction']==='Email').length,vI.filter(r=>r['Interaction']==='Chat').length,vI.filter(r=>r['Interaction']==='Dispute').length,fcrP]);
+      });
+      richTable(['Vertical','Tickets','Interactions','Calls','Emails','Chats','Disputes','FCR %'],vRows,{colorCols:{fcr:[7],red:[6]},tableOpts:{columnStyles:{0:{cellWidth:40},1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'},6:{halign:'right'},7:{halign:'right',fontStyle:'bold'}}}});
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // PAGE 2 — TREND + ESCALATIONS + DISPUTES
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      addPage();
+      if(period!=='daily'&&G.uniqueDays.length){
+        secBar('Ticket Volume by Day',C.blue);
+        const dayMap={};tickets.forEach(r=>{if(r._dateStr)dayMap[r._dateStr]=(dayMap[r._dateStr]||0)+1;});
+        miniBarChart(G.uniqueDays,G.uniqueDays.map(d=>dayMap[d]||0),C.blue);
+        if(period==='monthly'){
+          secBar('Weekly Rollup',C.purple);
+          const wkMap={};tickets.forEach(r=>{const wk=getWeekLabel(r._dateStr);if(wk)wkMap[wk]=(wkMap[wk]||0)+1;});
+          miniBarChart(Object.keys(wkMap),Object.values(wkMap),C.purple);
+        }
+      }
+
+      if(G._escalationData){
+        const e=G._escalationData;
+        secBar('Escalations',C.red);
+        kpiTiles([{label:'Total Escalations',value:e.total,bad:true},{label:'Esc Rate',value:pct(e.total,tickets.length)+'%',bad:true},{label:'Closed',value:e.closed,good:true},{label:'Still Open',value:e.total-e.closed,bad:e.total-e.closed>0}]);
+        secBar('Top Escalation Reasons',C.red);
+        miniBarChart(e.rOrder.slice(0,10).map(([r])=>r),e.rOrder.slice(0,10).map(([,c])=>c),C.red);
+        secBar('Escalation by Status',C.amber);
+        richTable(['Status','Count','% of Total'],e.statusOrder.map(([s,c])=>[s||'Unknown',c,pct(c,e.total)+'%']),{tableOpts:{columnStyles:{1:{halign:'right'},2:{halign:'right'}}}});
+      }
+
+      if(G._disputeData){
+        const dd=G._disputeData;
+        chk(10);secBar('Disputes',C.red);
+        kpiTiles([{label:'Total Disputes',value:dd.total,bad:true},{label:'Top Vertical',value:dd.vOrder[0]?.[0]||'—',bad:true},{label:'Top Vertical Count',value:dd.vOrder[0]?.[1]||0,bad:true},{label:'% of Total Tickets',value:pct(dd.total,tickets.length)+'%',bad:true}]);
+        const disputeRows=dd.vOrder.map(([v,c])=>[v,c,pct(c,dd.total)+'%']);
+        richTable(['Vertical','Count','% of Disputes'],disputeRows,{tableOpts:{columnStyles:{1:{halign:'right'},2:{halign:'right'}}}});
+        secBar('Top Dispute Reasons',C.red);
+        miniBarChart(dd.rOrder.map(([r])=>r),dd.rOrder.map(([,c])=>c),C.red);
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // PAGE 3 — REFUNDS + AGENT PRODUCTIVITY
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      addPage();
+      if(G._refundData){
+        const rD=G._refundData;
+        secBar('Refunds',C.amber);
+        kpiTiles([{label:'Total Actions',value:rD.refunds.length},{label:'BCI Card ($)',value:fmt$(rD.sum(rD.bciCard)),sub:rD.bciCard.length+' cases',bad:true},{label:'ACI Full ($)',value:fmt$(rD.sum(rD.aciCard)),sub:rD.aciCard.length+' cases',bad:true},{label:'ACI Denied / Saved ($)',value:fmt$(rD.sum(rD.aciDenied)),sub:rD.aciDenied.length+' saved',good:true}]);
+        const rTypes=['BCI Card','BCI Waybucks','ACI Full','ACI Partial','ACI Denied','Sub Refund'];
+        const refRows=[];rD.verts.forEach(v=>{const vr=rD.refunds.filter(r=>r._vertical===v);refRows.push([v,...rTypes.map(t=>vr.filter(r=>r._refund===t).length),vr.length]);});
+        refRows.push(['Total',...rTypes.map(t=>rD.totals[t]),rD.grandTotal]);
+        richTable(['Vertical',...rTypes,'Total'],refRows,{tableOpts:{styles:{fontSize:7},columnStyles:Object.fromEntries([...rTypes,'Total'].map((_,i)=>[i+1,{halign:'right'}]))}});
+      }
+
+      secBar('Agent Productivity',C.green);
+      if(G.agentData&&G.agentData.length){
+        // KPI summary row
+        const total=G.agentData.reduce((s,a)=>s+a.total,0);
+        const belowFCR=G.agentData.filter(a=>a.fcr_pct<FCR_TARGET&&a.total>=5).length;
+        const highEsc=G.agentData.filter(a=>a.esc_rate>5).length;
+        kpiTiles([{label:'Total Agents',value:G.agentData.length},{label:'Avg Tickets / Agent',value:Math.round(total/G.agentData.length)},{label:'FCR Below 80%',value:belowFCR+' agents',bad:belowFCR>0},{label:'High Esc Rate (>5%)',value:highEsc+' agents',bad:highEsc>0}]);
+        richTable(
+          ['#','Agent','Total','Calls','Emails','Chats','Disp','Esc %','FCR %','Ints/Tkt'],
+          G.agentData.map((a,i)=>[i+1,a.name,a.total,a.calls,a.emails,a.chats,a.disputes,a.esc_rate+'%',a.fcr_pct+'%',a.avg_ints+'x']),
+          {colorCols:{fcr:[8],esc:[7]},tableOpts:{styles:{fontSize:6.8},columnStyles:{0:{cellWidth:7,halign:'right'},1:{cellWidth:38},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'},6:{halign:'right'},7:{halign:'right'},8:{halign:'right'},9:{halign:'right'}}}}
+        );
+      }
+
+      footers();
+      doc.save(`CCD-${period}-${date.replace(/[^a-zA-Z0-9]/g,'-')}.pdf`);
+      hideExportOverlay();
     }catch(err){hideExportOverlay();alert('PDF export failed: '+err.message);console.error(err);}
-  },100);
+  },150);
 }
 </script>
 </body>
