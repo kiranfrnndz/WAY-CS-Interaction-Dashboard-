@@ -714,11 +714,11 @@ function mkKPI(l,v,s='',c=''){return`<div class="kpi"><div class="kpi-l">${l}</d
 function pct(n,d){return d?Math.round(n/d*1000)/10:0;}
 function fmt$(n){return'$'+Math.round(n).toLocaleString();}
 function countBy(arr,key){const r={};arr.forEach(x=>{const k=String(x[key]||'');r[k]=(r[k]||0)+1;});return r;}
-const GC='rgba(255,255,255,0.05)',TC='#5a5654';
+const GC='rgba(0,0,0,0.07)',TC='#9e9a94';
 
 function mkDonut(id,labels,data,colors){
   if(CHARTS[id])CHARTS[id].destroy();
-  CHARTS[id]=new Chart(document.getElementById(id),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors||COLORS.slice(0,data.length),borderWidth:2,borderColor:'#0f0f0f'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  CHARTS[id]=new Chart(document.getElementById(id),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors||COLORS.slice(0,data.length),borderWidth:2,const GC='rgba(0,0,0,0.07)',TC='#9e9a94';}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
 }
 function mkBar(id,labels,datasets,opts={}){
   if(CHARTS[id])CHARTS[id].destroy();
