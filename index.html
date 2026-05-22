@@ -8,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0f0f0f;--sf:#1a1a1a;--sf2:#222;--sf3:#2a2a2a;--bd:#2e2e2e;--bd2:#3a3a3a;--tx:#f0ede8;--tx2:#9e9a94;--tx3:#5a5654;--gn:#4ade80;--gn-bg:#0d2818;--rd:#f87171;--rd-bg:#2d1010;--am:#fbbf24;--am-bg:#2d2000;--bl:#60a5fa;--bl-bg:#0d1f3c;--pu:#a78bfa;--ac:#f97316;--r:8px;--rs:5px}
+:root{--bg:#f5f4f0;--sf:#ffffff;--sf2:#f0ede8;--sf3:#e8e4de;--bd:#e2ddd6;--bd2:#ccc8c0;--tx:#1a1916;--tx2:#6b6760;--tx3:#a09c96;--gn:#16a34a;--gn-bg:#dcfce7;--rd:#dc2626;--rd-bg:#fee2e2;--am:#d97706;--am-bg:#fef3c7;--bl:#2563eb;--bl-bg:#dbeafe;--pu:#7c3aed;--ac:#ea580c;--r:8px;--rs:5px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;font-size:13px;line-height:1.5}
 
@@ -31,7 +31,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-h
 
 /* UPLOAD ZONE */
 .up-zone{width:100%;max-width:480px;border:1.5px dashed var(--bd2);border-radius:var(--r);padding:2.5rem 2rem;text-align:center;cursor:pointer;background:transparent;position:relative;transition:all .2s}
-.up-zone:hover,.up-zone.drag{border-color:var(--ac);background:#1e1510}
+.up-zone:hover,.up-zone.drag{border-color:var(--ac);background:#fff7ed}
 .up-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .up-icon{width:44px;height:44px;margin:0 auto 1rem;background:var(--sf);border-radius:50%;display:flex;align-items:center;justify-content:center}
 .up-icon svg{width:20px;height:20px;stroke:var(--tx2);fill:none;stroke-width:1.5}
@@ -133,9 +133,9 @@ tfoot td{padding:9px 11px;font-weight:600;font-size:11px;color:var(--tx2);border
 .dla{font-size:11px;color:var(--tx3);min-width:60px;text-align:right;font-family:'DM Mono',monospace}
 
 /* AI */
-.ai-card{background:linear-gradient(135deg,#0d1f3c,#1a1a2e);border:1px solid #1e3a6e;border-radius:var(--r);padding:1rem 1.2rem;margin-bottom:12px}
-.ai-tag{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--bl);background:var(--bl-bg);border:1px solid #1e3a6e;padding:2px 8px;border-radius:20px;margin-bottom:10px;letter-spacing:.05em;text-transform:uppercase}
-.ai-dot{width:6px;height:6px;border-radius:50%;background:var(--bl);animation:pulse 2s infinite}
+.ai-card{background:linear-gradient(135deg,#dbeafe,#ede9fe);border:1px solid #bfdbfe;border-radius:var(--r);padding:1rem 1.2rem;margin-bottom:12px}
+.ai-tag{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:#1d4ed8;background:#dbeafe;border:1px solid #bfdbfe;padding:2px 8px;border-radius:20px;margin-bottom:10px;letter-spacing:.05em;text-transform:uppercase}
+.ai-dot{width:6px;height:6px;border-radius:50%;background:#2563eb;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* CONTROLS */
@@ -591,7 +591,7 @@ function categorize(row){
 function buildDashboard(raw){
   const df=raw.map(r=>{
     const dt=parseDate(r['Ticket_created_date']);
-    return{...r,_dt:dt,_dateKey:dt?dateKey(dt):'',_weekKey:dt?weekKey(dt):'',_monthKey:dt?monthKey(dt):'',
+    return{...r,_dt:dt,_dateKey:dt?dateKey(dt):'',_idt:parseDate(r['Interaction created date']),_weekKey:dt?weekKey(dt):'',_monthKey:dt?monthKey(dt):'',
       _vertical:mapVertical(r),_refund:tagRefund(r['Action']),
       _driver:(String(r['Reason']||'').trim()+' > '+String(r['Sub Reason']||'').trim()).replace(/ > $/,'').replace(/^ > /,''),
       _isTicket:!!r['Ticket ID'],_isEscalated:String(r['TKT_IssueReason']||'')==='Escalated',_category:categorize(r)};
@@ -601,10 +601,10 @@ function buildDashboard(raw){
   const followupOGIs=new Set(df.filter(r=>!r._isTicket&&r['OGI']).map(r=>String(r['OGI'])));
 
   // Get unique period keys from TICKET rows only
-  const ticketRows=df.filter(r=>r._isTicket&&r._dateKey);
-  const dateKeys=[...new Set(ticketRows.map(r=>r._dateKey))].sort();
-  const weekKeys=[...new Set(ticketRows.map(r=>r._weekKey))].filter(k=>k).sort();
-  const monthKeys=[...new Set(ticketRows.map(r=>r._monthKey))].filter(k=>k).sort();
+  const ticketRows=df.filter(r=>r._isTicket&&(r._idt||r._dt));
+  const dateKeys=[...new Set(ticketRows.map(r=>{const d=r._idt||r._dt;return d?dateKey(d):'';}).filter(k=>k))].sort();
+  const weekKeys=[...new Set(ticketRows.map(r=>{const d=r._idt||r._dt;return d?weekKey(d):'';}).filter(k=>k))].sort();
+  const monthKeys=[...new Set(ticketRows.map(r=>{const d=r._idt||r._dt;return d?monthKey(d):'';}).filter(k=>k))].sort();
 
   G={df,followupOGIs,dateKeys,weekKeys,monthKeys};
 
@@ -683,9 +683,9 @@ function getFiltered(){
   // Filter ticket rows by period; keep all non-ticket rows
   const filtered=df.filter(r=>{
     if(!r._isTicket) return true; // always include follow-ups
-    if(MODE==='daily') return r._dateKey===ACTIVE_KEY;
-    if(MODE==='weekly') return r._weekKey===ACTIVE_KEY;
-    if(MODE==='monthly') return r._monthKey===ACTIVE_KEY;
+    if(MODE==='daily') return r._idt?dateKey(r._idt)===ACTIVE_KEY:r._dateKey===ACTIVE_KEY;
+    if(MODE==='weekly'){const idt=r._idt||r._dt;return idt?weekKey(idt)===ACTIVE_KEY:r._weekKey===ACTIVE_KEY;}
+    if(MODE==='monthly'){const idt=r._idt||r._dt;return idt?monthKey(idt)===ACTIVE_KEY:r._monthKey===ACTIVE_KEY;}
     return true;
   });
   // Also filter non-ticket rows to only those whose ticket context matches
@@ -718,7 +718,7 @@ const GC='rgba(0,0,0,0.07)',TC='#9e9a94';
 
 function mkDonut(id,labels,data,colors){
   if(CHARTS[id])CHARTS[id].destroy();
-  CHARTS[id]=new Chart(document.getElementById(id),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors||COLORS.slice(0,data.length),borderWidth:2,const GC='rgba(0,0,0,0.07)',TC='#9e9a94';}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  CHARTS[id]=new Chart(document.getElementById(id),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors||COLORS.slice(0,data.length),borderWidth:2,borderColor:'#ffffff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
 }
 function mkBar(id,labels,datasets,opts={}){
   if(CHARTS[id])CHARTS[id].destroy();
