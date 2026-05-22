@@ -227,7 +227,7 @@ input[type=text]{width:180px}
     <div class="sec active" id="t1">
       <div class="kpis" id="kpi1"></div>
       <div class="g2">
-        <div class="card"><div class="ct">Channel mix (frontline)</div><div class="leg" id="leg-ch"></div><div class="cw" style="height:180px"><canvas id="c-ch"></canvas></div></div>
+        <div class="card"><div class="ct">Channel mix — inbound &amp; outbound</div><div class="leg" id="leg-ch"></div><div class="cw" style="height:180px"><canvas id="c-ch"></canvas></div></div>
         <div class="card"><div class="ct">Vertical distribution</div><div class="leg" id="leg-vt"></div><div class="cw" style="height:180px"><canvas id="c-vt"></canvas></div></div>
       </div>
       <div class="card"><div class="ct">All interaction types</div><div class="cw" style="height:140px"><canvas id="c-all"></canvas></div></div>
@@ -735,7 +735,10 @@ function buildOverview(){
   const{df}=getFiltered();
   const fl=df.filter(r=>r._category==='Frontline');
   const tickets=fl.filter(r=>r._isTicket);
-  const calls=fl.filter(r=>r['Interaction']==='Call').length;
+  // Calls: include ALL agents (frontline + dispute team calls)
+  const calls=df.filter(r=>r['Interaction']==='Call').length;
+  const callsInbound=df.filter(r=>r['Interaction']==='Call'&&String(r['Reason']||'')!=='Outbound Vendor Call'&&String(r['Sub Reason']||'')!=='Called Back').length;
+  const callsOutbound=df.filter(r=>r['Interaction']==='Call'&&(String(r['Reason']||'')==='Outbound Vendor Call'||String(r['Sub Reason']||'')==='Called Back')).length;
   const emails=fl.filter(r=>r['Interaction']==='Email').length;
   const chats=fl.filter(r=>r['Interaction']==='Chat').length;
   const escs=df.filter(r=>r._isEscalated).length;
@@ -750,7 +753,9 @@ function buildOverview(){
 
   document.getElementById('kpi1').innerHTML=
     mkKPI('Tickets (frontline)',tickets.length.toLocaleString())+
-    mkKPI('Calls',calls.toLocaleString())+
+    mkKPI('Total calls',calls.toLocaleString())+
+    mkKPI('Inbound calls',callsInbound.toLocaleString(),'of '+calls+' total')+
+    mkKPI('Outbound calls',callsOutbound.toLocaleString(),'vendor & callbacks')+
     mkKPI('Emails',emails.toLocaleString())+
     mkKPI('Chats',chats.toLocaleString())+
     mkKPI('Overall FCR',fcrPct+'%',fcrPct>=FCR_TARGET?'above target':'below target',fcrPct>=FCR_TARGET?'gn':'rd')+
@@ -760,10 +765,14 @@ function buildOverview(){
     mkKPI('User Reviews',reviews,'','pu')+
     mkKPI('AI Calls',aiCalls,'AI handled','bl');
 
-  // Channel donut
-  const chC=['#60a5fa','#4ade80','#f97316'];
-  document.getElementById('leg-ch').innerHTML=['Call','Email','Chat'].map((l,i)=>`<span class="li"><span class="ld" style="background:${chC[i]}"></span>${l} ${pct([calls,emails,chats][i],calls+emails+chats)}%</span>`).join('');
-  mkDonut('c-ch',['Call','Email','Chat'],[calls,emails,chats],chC);
+  // Channel donut — inbound / outbound / email / chat
+  const chC=['#2563eb','#60a5fa','#4ade80','#f97316'];
+  const chTot=callsInbound+callsOutbound+emails+chats;
+  document.getElementById('leg-ch').innerHTML=[
+    ['Inbound',callsInbound,'#2563eb'],['Outbound',callsOutbound,'#60a5fa'],
+    ['Email',emails,'#4ade80'],['Chat',chats,'#f97316']
+  ].map(([l,v,c])=>`<span class="li"><span class="ld" style="background:${c}"></span>${l} ${pct(v,chTot)}%</span>`).join('');
+  mkDonut('c-ch',['Inbound','Outbound','Email','Chat'],[callsInbound,callsOutbound,emails,chats],chC);
 
   // Vertical donut
   const vC={};fl.forEach(r=>{vC[r._vertical]=(vC[r._vertical]||0)+1;});
