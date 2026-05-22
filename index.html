@@ -679,17 +679,15 @@ function buildSelBar(){
 function getFiltered(){
   const{df,followupOGIs}=G;
   if(!ACTIVE_KEY) return{df,followupOGIs};
-  // For non-ticket rows (follow-ups), always include — they link via OGI
-  // Filter ticket rows by period; keep all non-ticket rows
+  // Filter ALL rows by interaction created date
   const filtered=df.filter(r=>{
-    if(!r._isTicket) return true; // always include follow-ups
-    if(MODE==='daily') return r._idt?dateKey(r._idt)===ACTIVE_KEY:r._dateKey===ACTIVE_KEY;
-    if(MODE==='weekly'){const idt=r._idt||r._dt;return idt?weekKey(idt)===ACTIVE_KEY:r._weekKey===ACTIVE_KEY;}
-    if(MODE==='monthly'){const idt=r._idt||r._dt;return idt?monthKey(idt)===ACTIVE_KEY:r._monthKey===ACTIVE_KEY;}
+    const d=r._idt||r._dt;
+    if(!d) return false;
+    if(MODE==='daily') return dateKey(d)===ACTIVE_KEY;
+    if(MODE==='weekly') return weekKey(d)===ACTIVE_KEY;
+    if(MODE==='monthly') return monthKey(d)===ACTIVE_KEY;
     return true;
   });
-  // Also filter non-ticket rows to only those whose ticket context matches
-  // (keep all non-ticket rows — they may reference any ticket)
   return{df:filtered,followupOGIs};
 }
 
