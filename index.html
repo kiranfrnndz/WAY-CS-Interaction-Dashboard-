@@ -145,6 +145,8 @@ select:focus,input[type=text]:focus{border-color:var(--ac)}
 input[type=text]{width:180px}
 .hint{font-size:11px;color:var(--tx3)}
 .empty{text-align:center;padding:2rem;color:var(--tx3);font-size:12px}
+.team-hdr{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--tc,var(--tx2));border-left:3px solid var(--tc,var(--bd2));padding:6px 10px;margin-bottom:10px;margin-top:4px;background:color-mix(in srgb,var(--tc,var(--bd2)) 8%,transparent);border-radius:0 var(--rs) var(--rs) 0}
+.absent-tag{display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;background:var(--rd-bg);color:var(--rd);margin-left:6px;font-weight:600;font-family:'DM Mono',monospace}
 
 @media(max-width:600px){.g2{grid-template-columns:1fr}.content{padding:1rem}.up-title{font-size:28px}.mode-btn{padding:.9rem .5rem}}
 </style>
@@ -368,7 +370,71 @@ input[type=text]{width:180px}
     <!-- T11: AGENTS -->
     <div class="sec" id="t11">
       <div class="kpis" id="kpi11"></div>
-      <div class="card"><div class="ct">Top agents by complexity — interactions per ticket (min 5 tickets)</div><div class="cw" style="height:240px"><canvas id="c-ipt"></canvas></div></div>
+
+      <!-- MANAGEMENT -->
+      <div class="team-hdr" style="--tc:#b45309">Management</div>
+      <div class="tw" style="margin-bottom:20px"><table>
+        <thead><tr><th>Name</th><th>Role</th><th class="n">Calls</th><th class="n">Emails</th><th class="n">Chats</th><th class="n">Total</th></tr></thead>
+        <tbody id="mgmt-body"></tbody>
+      </table></div>
+
+      <!-- TEAM LEADERS -->
+      <div class="team-hdr" style="--tc:#2563eb">Team Leaders <span id="tl-cnt" style="font-weight:400;font-size:10px;color:var(--tx3)"></span></div>
+      <div class="tw" style="margin-bottom:20px"><table>
+        <thead><tr><th>Name</th><th class="n">Calls</th><th class="n">Emails</th><th class="n">Chats</th><th class="n">TL Reviews</th><th class="n">Esc handled</th><th class="n">Total</th><th class="n">Esc%</th></tr></thead>
+        <tbody id="tl-body"></tbody>
+        <tfoot><tr id="tl-foot"></tr></tfoot>
+      </table></div>
+
+      <!-- QC TEAM -->
+      <div class="team-hdr" style="--tc:#7c3aed">QC Team <span style="font-weight:400;font-size:10px;color:var(--tx3)">(QC work + frontline shown separately)</span></div>
+      <div class="tw" style="margin-bottom:20px"><table>
+        <thead><tr><th>Name</th><th>Note</th><th class="n">QC Audits</th><th class="n">FL Calls</th><th class="n">FL Emails</th><th class="n">FL Chats</th><th class="n">FL Total</th><th class="n">FCR%</th><th class="n">Esc%</th></tr></thead>
+        <tbody id="qc-body"></tbody>
+        <tfoot><tr id="qc-foot"></tr></tfoot>
+      </table></div>
+
+      <!-- L2 ESCALATIONS -->
+      <div class="team-hdr" style="--tc:#dc2626">L2 Escalations</div>
+      <div class="tw" style="margin-bottom:20px"><table>
+        <thead><tr><th>Name</th><th class="n">Esc handled</th><th class="n">FL Calls</th><th class="n">FL Emails</th><th class="n">FL Chats</th><th class="n">FL Total</th><th class="n">FCR%</th></tr></thead>
+        <tbody id="l2-body"></tbody>
+      </table></div>
+
+      <!-- REVIEWS TEAM -->
+      <div class="team-hdr" style="--tc:#0891b2">Reviews Team <span style="font-weight:400;font-size:10px;color:var(--tx3)">(review work + frontline shown separately)</span></div>
+      <div class="tw" style="margin-bottom:20px"><table>
+        <thead><tr><th>Name</th><th class="n">Reviews handled</th><th class="n">FL Calls</th><th class="n">FL Emails</th><th class="n">FL Chats</th><th class="n">FL Total</th><th class="n">FCR%</th><th class="n">Esc%</th></tr></thead>
+        <tbody id="rev-team-body"></tbody>
+        <tfoot><tr id="rev-team-foot"></tr></tfoot>
+      </table></div>
+
+      <!-- AD HOC & REPORTING -->
+      <div class="team-hdr" style="--tc:#059669">Ad hoc &amp; Reporting</div>
+      <div class="tw" style="margin-bottom:20px"><table>
+        <thead><tr><th>Name</th><th class="n">FL Calls</th><th class="n">FL Emails</th><th class="n">FL Chats</th><th class="n">Total</th></tr></thead>
+        <tbody id="adhoc-body"></tbody>
+      </table></div>
+
+      <!-- INDIAN SPANISH TEAM -->
+      <div class="team-hdr" style="--tc:#d97706">Indian Spanish Team <span id="isp-cnt" style="font-weight:400;font-size:10px;color:var(--tx3)"></span></div>
+      <div class="tw" style="margin-bottom:20px"><table>
+        <thead><tr><th>Name</th><th class="n">Calls</th><th class="n">Emails</th><th class="n">Chats</th><th class="n">Total</th><th class="n">FCR%</th><th class="n">Esc%</th></tr></thead>
+        <tbody id="isp-body"></tbody>
+        <tfoot><tr id="isp-foot"></tr></tfoot>
+      </table></div>
+
+      <!-- WAY+ / COLUMBIA TEAM -->
+      <div class="team-hdr" style="--tc:#be185d">Way+ / Columbia Team <span id="col-cnt" style="font-weight:400;font-size:10px;color:var(--tx3)"></span></div>
+      <div class="tw" style="margin-bottom:20px"><table>
+        <thead><tr><th>Name</th><th class="n">Calls</th><th class="n">Emails</th><th class="n">Chats</th><th class="n">Total</th><th class="n">FCR%</th><th class="n">Esc%</th></tr></thead>
+        <tbody id="col-body"></tbody>
+        <tfoot><tr id="col-foot"></tr></tfoot>
+      </table></div>
+
+      <!-- FRONTLINE -->
+      <div class="team-hdr" style="--tc:#16a34a">Frontline Agents</div>
+      <div class="card" style="margin-bottom:12px"><div class="ct">Top agents by complexity (min 5 tickets)</div><div class="cw" style="height:220px"><canvas id="c-ipt"></canvas></div></div>
       <div class="ctrl">
         <input type="text" id="ag-srch" placeholder="Search agent..." oninput="renderAgents()">
         <select id="ag-flt" onchange="renderAgents()">
@@ -386,16 +452,14 @@ input[type=text]{width:180px}
           <th class="n" onclick="sortAg('calls')">Calls <span id="ar-calls"></span></th>
           <th class="n" onclick="sortAg('emails')">Emails <span id="ar-emails"></span></th>
           <th class="n" onclick="sortAg('chats')">Chats <span id="ar-chats"></span></th>
+          <th class="n" onclick="sortAg('tl_reviews')">TL Rev <span id="ar-tl_reviews"></span></th>
           <th class="n" onclick="sortAg('esc_rate')">Esc% <span id="ar-esc_rate"></span></th>
           <th class="n" onclick="sortAg('fcr_pct')">FCR% <span id="ar-fcr_pct"></span></th>
           <th class="n" onclick="sortAg('avg_ints')">Ints/ticket <span id="ar-avg_ints"></span></th>
-          <th class="n" onclick="sortAg('multi_pct')">Multi-touch% <span id="ar-multi_pct"></span></th>
         </tr></thead>
         <tbody id="ag-body"></tbody>
         <tfoot><tr id="ag-foot"></tr></tfoot>
       </table></div>
-    </div>
-
   </div>
 </div>
 
@@ -406,6 +470,15 @@ input[type=text]{width:180px}
 const COLORS=['#60a5fa','#4ade80','#f97316','#a78bfa','#f87171','#2dd4bf','#fbbf24','#fb923c','#818cf8','#34d399'];
 const FCR_TARGET=80;
 const DISPUTE_TEAM=['Sreelaraghavan','Gowri','Subin MS','Greeshma RS'];
+const TL_TEAM=['Shiju Salam','Vishnu V','Bijoy Kiran','Rashmika Santhosh D','Vishnu BS','surya suresh','Ansu Varghese','Jaison Nelson'];
+const QC_TEAM=['Henna Najim S','Vidya Vijayan','Reshma','Rijisha S Kumar'];
+const L2_TEAM=['Jithin S'];
+const REVIEW_TEAM=['Muvithra M','Tharun Sunil Kumar','Jijo Papachan','Abhilash Augustin'];
+const ADHOC_TEAM=['Vishnu MS'];
+const MGMT_TEAM=['Anju Mareeta Lean','Joyson Fernandez'];
+const INDIAN_SPANISH=['Pawan Kumar','NAUSHAD AHMAD','Javed Humayun Khan','MD Sattar Alam','Mohamed Jowhar','Ansar Alli','U Likhith','Mohammad Haider Ali','Siddarth Raj'];
+const COLUMBIA_TEAM=['Alexandra Morales','Andrea Ruiz','Angeles Soledad','Daniel Montoya','Karen Hopkins','Brianna Lundy','Karolyne Perez','Mauricio Leon','Nicholas Marquez','Oscar Perez','Sarah Gonzales','Valentina Torres','Selina Benavides','Gabriella Lacayo'];
+const ALL_SPECIAL=new Set([...DISPUTE_TEAM,...TL_TEAM,...QC_TEAM,...L2_TEAM,...REVIEW_TEAM,...ADHOC_TEAM,...MGMT_TEAM,...INDIAN_SPANISH,...COLUMBIA_TEAM]);
 const FCR_EXCLUDE=['Dispute','TL Review','AI-Agent Call','Escalation Handled by TL',
   'Escalation handled by Ops Team','User Reviews','QC Audit','Manager Review',
   'Escalation Handled by Escalation Team'];
@@ -1090,26 +1163,173 @@ function buildTimeTab(){
 function buildAgentTab(){
   const{df:rawDf,followupOGIs}=G;
   const{df}=getFiltered();
-  const fl=df.filter(r=>r._category==='Frontline');
-  const tickets=fl.filter(r=>r._isTicket);
-  const fcrT=tickets.filter(r=>!FCR_EXCLUDE.includes(String(r['Interaction']||'')));
-  fcrT.forEach(r=>{r._isFCR=r['OGI']?!followupOGIs.has(String(r['OGI'])):true;});
-  const agFCR={};fcrT.forEach(r=>{const a=String(r['Agent Name']||'');if(!agFCR[a])agFCR[a]={t:0,f:0};agFCR[a].t++;if(r._isFCR)agFCR[a].f++;});
+
+  // ── HELPERS
+  function agStats(rows){
+    const m={};
+    rows.forEach(r=>{
+      const a=String(r['Agent Name']||'');if(!a)return;
+      if(!m[a])m[a]={name:a,total:0,calls:0,emails:0,chats:0,tlreviews:0,escHandled:0,escalations:0,reviews:0,qcaudits:0};
+      m[a].total++;
+      const ch=String(r['Interaction']||'');
+      if(ch==='Call')m[a].calls++;
+      else if(ch==='Email')m[a].emails++;
+      else if(ch==='Chat')m[a].chats++;
+      else if(ch==='TL Review')m[a].tlreviews++;
+      else if(ch==='User Reviews')m[a].reviews++;
+      else if(ch==='QC Audit')m[a].qcaudits++;
+      else if(['Escalation Handled by TL','Escalation handled by Ops Team','Escalation handled by Escalation Team'].includes(ch))m[a].escHandled++;
+      if(r._isEscalated)m[a].escalations++;
+    });
+    return m;
+  }
+
+  function calcFCR(rows){
+    const fcr={};
+    const t=rows.filter(r=>r._isTicket&&!FCR_EXCLUDE.includes(String(r['Interaction']||'')));
+    t.forEach(r=>{r._isFCR=r['OGI']?!followupOGIs.has(String(r['OGI'])):true;});
+    t.forEach(r=>{const a=String(r['Agent Name']||'');if(!fcr[a])fcr[a]={t:0,f:0};fcr[a].t++;if(r._isFCR)fcr[a].f++;});
+    return fcr;
+  }
+
+  function fcrPct(fcr,name){const f=fcr[name];return f?pct(f.f,f.t):null;}
+
+  function absentTag(present){return present?'':'<span class="absent-tag">Absent</span>';}
+
+  function fcrBadge(p){if(p===null)return'—';return`<span class="bx ${p>=80?'bg':p>=70?'ba':'br'}">${p}%</span>`;}
+
+  function escBadge(r){return`<span class="bx ${r>5?'br':r>2?'ba':'bg'}">${r}%</span>`;}
+
+  // ── MANAGEMENT
+  const mgmtRoles={'Anju Mareeta Lean':'Asst. Manager','Joyson Fernandez':'Manager'};
+  const mgmtMap=agStats(df.filter(r=>MGMT_TEAM.includes(String(r['Agent Name']||''))));
+  document.getElementById('mgmt-body').innerHTML=MGMT_TEAM.map(n=>{
+    const d=mgmtMap[n]||{calls:0,emails:0,chats:0,total:0};
+    return`<tr><td>${n}${absentTag(d.total>0)}</td><td style="font-size:11px;color:var(--tx2)">${mgmtRoles[n]}</td><td class="n">${d.calls}</td><td class="n">${d.emails}</td><td class="n">${d.chats}</td><td class="n" style="font-weight:600">${d.calls+d.emails+d.chats}</td></tr>`;
+  }).join('');
+
+  // ── TEAM LEADERS
+  const tlMap=agStats(df.filter(r=>TL_TEAM.includes(String(r['Agent Name']||''))));
+  document.getElementById('tl-cnt').textContent='('+TL_TEAM.length+' TLs)';
+  const tlT={calls:0,emails:0,chats:0,tlreviews:0,escHandled:0,escalations:0,total:0};
+  document.getElementById('tl-body').innerHTML=TL_TEAM.map(n=>{
+    const d=tlMap[n]||{calls:0,emails:0,chats:0,tlreviews:0,escHandled:0,escalations:0,total:0};
+    const rt=d.calls+d.emails+d.chats+d.tlreviews+d.escHandled;
+    ['calls','emails','chats','tlreviews','escHandled','escalations','total'].forEach(k=>tlT[k]+=(d[k]||0));
+    const er=pct(d.escalations,d.total||1);
+    return`<tr><td>${n}${absentTag(d.total>0)}</td><td class="n">${d.calls}</td><td class="n">${d.emails}</td><td class="n">${d.chats}</td><td class="n"><span class="bx bb">${d.tlreviews}</span></td><td class="n">${d.escHandled}</td><td class="n" style="font-weight:600">${rt}</td><td class="n">${escBadge(er)}</td></tr>`;
+  }).join('');
+  document.getElementById('tl-foot').innerHTML=`<td>Total (${TL_TEAM.length})</td><td class="n">${tlT.calls}</td><td class="n">${tlT.emails}</td><td class="n">${tlT.chats}</td><td class="n">${tlT.tlreviews}</td><td class="n">${tlT.escHandled}</td><td class="n">${tlT.calls+tlT.emails+tlT.chats+tlT.tlreviews+tlT.escHandled}</td><td class="n">${escBadge(pct(tlT.escalations,tlT.total||1))}</td>`;
+
+  // ── QC TEAM (QC work + frontline separately)
+  const qcAllRows=df.filter(r=>QC_TEAM.includes(String(r['Agent Name']||'')));
+  const qcMap=agStats(qcAllRows);
+  const qcFCR=calcFCR(qcAllRows);
+  const qcT={qcaudits:0,calls:0,emails:0,chats:0,flTotal:0,escalations:0,total:0};
+  document.getElementById('qc-body').innerHTML=QC_TEAM.map(n=>{
+    const d=qcMap[n]||{qcaudits:0,calls:0,emails:0,chats:0,escalations:0,total:0};
+    const note=n==='Vidya Vijayan'?'Deputy TL':'';
+    const fp=fcrPct(qcFCR,n);const er=pct(d.escalations,d.total||1);
+    const fl=d.calls+d.emails+d.chats;
+    ['qcaudits','calls','emails','chats','escalations','total'].forEach(k=>qcT[k]+=(d[k]||0));qcT.flTotal+=fl;
+    return`<tr><td>${n}${absentTag(d.total>0)}</td><td style="font-size:11px;color:var(--tx2)">${note}</td><td class="n"><span class="bx bp">${d.qcaudits}</span></td><td class="n">${d.calls}</td><td class="n">${d.emails}</td><td class="n">${d.chats}</td><td class="n" style="font-weight:600">${fl}</td><td class="n">${fcrBadge(fp)}</td><td class="n">${escBadge(er)}</td></tr>`;
+  }).join('');
+  document.getElementById('qc-foot').innerHTML=`<td>Total</td><td></td><td class="n">${qcT.qcaudits}</td><td class="n">${qcT.calls}</td><td class="n">${qcT.emails}</td><td class="n">${qcT.chats}</td><td class="n">${qcT.flTotal}</td><td class="n">—</td><td class="n">${escBadge(pct(qcT.escalations,qcT.total||1))}</td>`;
+
+  // ── L2 ESCALATIONS
+  const l2Rows=df.filter(r=>L2_TEAM.includes(String(r['Agent Name']||'')));
+  const l2Map=agStats(l2Rows);const l2FCR=calcFCR(l2Rows);
+  document.getElementById('l2-body').innerHTML=L2_TEAM.map(n=>{
+    const d=l2Map[n]||{escHandled:0,calls:0,emails:0,chats:0,total:0};
+    const fp=fcrPct(l2FCR,n);const fl=d.calls+d.emails+d.chats;
+    return`<tr><td>${n}${absentTag(d.total>0)}</td><td class="n"><span class="bx br">${d.escHandled}</span></td><td class="n">${d.calls}</td><td class="n">${d.emails}</td><td class="n">${d.chats}</td><td class="n" style="font-weight:600">${fl}</td><td class="n">${fcrBadge(fp)}</td></tr>`;
+  }).join('');
+
+  // ── REVIEWS TEAM (review work + frontline separately)
+  const revTeamRows=df.filter(r=>REVIEW_TEAM.includes(String(r['Agent Name']||'')));
+  const revTeamMap=agStats(revTeamRows);const revTeamFCR=calcFCR(revTeamRows);
+  const rvT={reviews:0,calls:0,emails:0,chats:0,flTotal:0,escalations:0,total:0};
+  document.getElementById('rev-team-body').innerHTML=REVIEW_TEAM.map(n=>{
+    const d=revTeamMap[n]||{reviews:0,calls:0,emails:0,chats:0,escalations:0,total:0};
+    const fp=fcrPct(revTeamFCR,n);const er=pct(d.escalations,d.total||1);
+    const fl=d.calls+d.emails+d.chats;
+    ['reviews','calls','emails','chats','escalations','total'].forEach(k=>rvT[k]+=(d[k]||0));rvT.flTotal+=fl;
+    return`<tr><td>${n}${absentTag(d.total>0)}</td><td class="n"><span class="bx" style="background:#e0f2fe;color:#0369a1">${d.reviews}</span></td><td class="n">${d.calls}</td><td class="n">${d.emails}</td><td class="n">${d.chats}</td><td class="n" style="font-weight:600">${fl}</td><td class="n">${fcrBadge(fp)}</td><td class="n">${escBadge(er)}</td></tr>`;
+  }).join('');
+  document.getElementById('rev-team-foot').innerHTML=`<td>Total</td><td class="n">${rvT.reviews}</td><td class="n">${rvT.calls}</td><td class="n">${rvT.emails}</td><td class="n">${rvT.chats}</td><td class="n">${rvT.flTotal}</td><td class="n">—</td><td class="n">${escBadge(pct(rvT.escalations,rvT.total||1))}</td>`;
+
+  // ── AD HOC & REPORTING
+  const adhocRows=df.filter(r=>ADHOC_TEAM.includes(String(r['Agent Name']||'')));
+  const adhocMap=agStats(adhocRows);
+  document.getElementById('adhoc-body').innerHTML=ADHOC_TEAM.map(n=>{
+    const d=adhocMap[n]||{calls:0,emails:0,chats:0,total:0};
+    return`<tr><td>${n}${absentTag(d.total>0)}</td><td class="n">${d.calls}</td><td class="n">${d.emails}</td><td class="n">${d.chats}</td><td class="n" style="font-weight:600">${d.calls+d.emails+d.chats}</td></tr>`;
+  }).join('');
+
+  // ── INDIAN SPANISH TEAM
+  const ispRows=df.filter(r=>INDIAN_SPANISH.includes(String(r['Agent Name']||'')));
+  const ispMap=agStats(ispRows);const ispFCR=calcFCR(ispRows);
+  document.getElementById('isp-cnt').textContent='('+INDIAN_SPANISH.length+' agents)';
+  const ispT={calls:0,emails:0,chats:0,total:0,escalations:0};
+  document.getElementById('isp-body').innerHTML=INDIAN_SPANISH.map(n=>{
+    const d=ispMap[n]||{calls:0,emails:0,chats:0,total:0,escalations:0};
+    const fp=fcrPct(ispFCR,n);const er=pct(d.escalations,d.total||1);
+    ['calls','emails','chats','total','escalations'].forEach(k=>ispT[k]+=(d[k]||0));
+    return`<tr><td>${n}${absentTag(d.total>0)}</td><td class="n">${d.calls}</td><td class="n">${d.emails}</td><td class="n">${d.chats}</td><td class="n" style="font-weight:600">${d.total}</td><td class="n">${fcrBadge(fp)}</td><td class="n">${escBadge(er)}</td></tr>`;
+  }).join('');
+  document.getElementById('isp-foot').innerHTML=`<td>Total</td><td class="n">${ispT.calls}</td><td class="n">${ispT.emails}</td><td class="n">${ispT.chats}</td><td class="n">${ispT.total}</td><td class="n">—</td><td class="n">${escBadge(pct(ispT.escalations,ispT.total||1))}</td>`;
+
+  // ── WAY+ / COLUMBIA TEAM
+  const colRows=df.filter(r=>COLUMBIA_TEAM.includes(String(r['Agent Name']||'')));
+  const colMap=agStats(colRows);const colFCR=calcFCR(colRows);
+  document.getElementById('col-cnt').textContent='('+COLUMBIA_TEAM.length+' agents)';
+  const colT={calls:0,emails:0,chats:0,total:0,escalations:0};
+  document.getElementById('col-body').innerHTML=COLUMBIA_TEAM.map(n=>{
+    const d=colMap[n]||{calls:0,emails:0,chats:0,total:0,escalations:0};
+    const fp=fcrPct(colFCR,n);const er=pct(d.escalations,d.total||1);
+    ['calls','emails','chats','total','escalations'].forEach(k=>colT[k]+=(d[k]||0));
+    return`<tr><td>${n}${absentTag(d.total>0)}</td><td class="n">${d.calls}</td><td class="n">${d.emails}</td><td class="n">${d.chats}</td><td class="n" style="font-weight:600">${d.total}</td><td class="n">${fcrBadge(fp)}</td><td class="n">${escBadge(er)}</td></tr>`;
+  }).join('');
+  document.getElementById('col-foot').innerHTML=`<td>Total</td><td class="n">${colT.calls}</td><td class="n">${colT.emails}</td><td class="n">${colT.chats}</td><td class="n">${colT.total}</td><td class="n">—</td><td class="n">${escBadge(pct(colT.escalations,colT.total||1))}</td>`;
+
+  // ── FRONTLINE (exclude all special teams except REVIEW_TEAM, QC_TEAM, L2_TEAM who also do frontline)
+  const FRONTLINE_EXCLUDE=new Set([...DISPUTE_TEAM,...TL_TEAM,...MGMT_TEAM,...INDIAN_SPANISH,...COLUMBIA_TEAM,...ADHOC_TEAM]);
+  const flRows=df.filter(r=>{
+    const a=String(r['Agent Name']||'');
+    if(!a||a==='ai-decagon ai-decagon')return false;
+    if(FRONTLINE_EXCLUDE.has(a))return false;
+    const ch=String(r['Interaction']||'');
+    return['Call','Email','Chat'].includes(ch);
+  });
+  const flTickets=flRows.filter(r=>r._isTicket);
+  const flFCR=calcFCR(flRows);
   const fPOGI={};rawDf.filter(r=>!r._isTicket&&r['OGI']).forEach(r=>{const k=String(r['OGI']);fPOGI[k]=(fPOGI[k]||0)+1;});
-  tickets.forEach(r=>{const fc=r['OGI']?(fPOGI[String(r['OGI'])]||0):0;r._followups=fc;r._totalInts=1+fc;});
-  const agTD={};tickets.forEach(r=>{const a=String(r['Agent Name']||'');if(!agTD[a])agTD[a]={tickets:0,totalInts:0,multi:0};agTD[a].tickets++;agTD[a].totalInts+=r._totalInts||1;if((r._followups||0)>0)agTD[a].multi++;});
-  const agM={};
-  fl.forEach(r=>{const a=String(r['Agent Name']||'');if(!a||DISPUTE_TEAM.includes(a)||a==='ai-decagon ai-decagon')return;if(!agM[a])agM[a]={name:a,total:0,calls:0,emails:0,chats:0,escalations:0};agM[a].total++;const ch=String(r['Interaction']||'');if(ch==='Call')agM[a].calls++;else if(ch==='Email')agM[a].emails++;else if(ch==='Chat')agM[a].chats++;if(r._isEscalated)agM[a].escalations++;});
-  G.agentData=Object.values(agM).map(a=>{const fcr=agFCR[a.name];const td=agTD[a.name];return{...a,esc_rate:pct(a.escalations,a.total),fcr_pct:fcr?pct(fcr.f,fcr.t):100,avg_ints:td?Math.round(td.totalInts/td.tickets*100)/100:1,multi_pct:td?pct(td.multi,td.tickets):0};}).sort((a,b)=>b.total-a.total);
+  flTickets.forEach(r=>{const fc=r['OGI']?(fPOGI[String(r['OGI'])]||0):0;r._followups=fc;r._totalInts=1+fc;});
+  const agTD={};flTickets.forEach(r=>{const a=String(r['Agent Name']||'');if(!agTD[a])agTD[a]={tickets:0,totalInts:0,multi:0};agTD[a].tickets++;agTD[a].totalInts+=r._totalInts||1;if((r._followups||0)>0)agTD[a].multi++;});
+  const flMap=agStats(flRows);
+  G.agentData=Object.values(flMap).map(a=>{
+    const fcr=flFCR[a.name];const td=agTD[a.name];
+    return{...a,esc_rate:pct(a.escalations,a.total||1),fcr_pct:fcr?pct(fcr.f,fcr.t):100,avg_ints:td?Math.round(td.totalInts/td.tickets*100)/100:1,multi_pct:td?pct(td.multi,td.tickets):0,tl_reviews:a.tlreviews};
+  }).sort((a,b)=>b.total-a.total);
+
+  // Complexity chart
   const cpx=[...G.agentData].filter(a=>a.total>=5).sort((a,b)=>b.avg_ints-a.avg_ints).slice(0,10);
   if(cpx.length)mkBar('c-ipt',cpx.map(a=>a.name),[{data:cpx.map(a=>a.avg_ints),backgroundColor:cpx.map(a=>a.avg_ints>=1.5?'#f87171':a.avg_ints>=1.3?'#fbbf24':'#4ade80'),borderRadius:4,borderSkipped:false}],{yt:{callback:v=>v+'x'},ymin:1});
+
   const tot=G.agentData.reduce((s,a)=>s+a.total,0);
-  const avgFCR=fcrT.length?pct(fcrT.filter(r=>r._isFCR).length,fcrT.length):0;
+  const avgFCR=G.agentData.length?pct(G.agentData.filter(a=>a.fcr_pct>=80).length,G.agentData.length):0;
   const bFCR=G.agentData.filter(a=>a.fcr_pct<FCR_TARGET&&a.total>=5).length;
   const hEsc=G.agentData.filter(a=>a.esc_rate>5).length;
   const hCpx=G.agentData.filter(a=>a.avg_ints>1.4&&a.total>=5).length;
-  document.getElementById('kpi11').innerHTML=mkKPI('Frontline agents',G.agentData.length)+mkKPI('Avg tickets/agent',Math.round(tot/Math.max(G.agentData.length,1)))+mkKPI('FCR below 80%',bFCR+' agents','min 5 tickets','rd')+mkKPI('High esc rate (>5%)',hEsc+' agents','','rd')+mkKPI('High complexity (>1.4x)',hCpx+' agents','avg ints/ticket','am');
-  document.getElementById('ag-foot').innerHTML=`<td>Total — ${G.agentData.length} agents</td><td class="n">${tot}</td><td class="n">${G.agentData.reduce((s,a)=>s+a.calls,0)}</td><td class="n">${G.agentData.reduce((s,a)=>s+a.emails,0)}</td><td class="n">${G.agentData.reduce((s,a)=>s+a.chats,0)}</td><td class="n">${pct(G.agentData.reduce((s,a)=>s+a.escalations,0),tot)}%</td><td class="n">${avgFCR}%</td><td class="n">—</td><td class="n">—</td>`;
+
+  document.getElementById('kpi11').innerHTML=
+    mkKPI('Frontline agents',G.agentData.length)+
+    mkKPI('Avg tickets/agent',Math.round(tot/Math.max(G.agentData.length,1)))+
+    mkKPI('FCR below 80%',bFCR+' agents','min 5 tickets','rd')+
+    mkKPI('High esc rate (>5%)',hEsc+' agents','','rd')+
+    mkKPI('High complexity (>1.4x)',hCpx+' agents','','am');
+
+  document.getElementById('ag-foot').innerHTML=`<td>Total — ${G.agentData.length} agents</td><td class="n">${tot}</td><td class="n">${G.agentData.reduce((s,a)=>s+a.calls,0)}</td><td class="n">${G.agentData.reduce((s,a)=>s+a.emails,0)}</td><td class="n">${G.agentData.reduce((s,a)=>s+a.chats,0)}</td><td class="n">${G.agentData.reduce((s,a)=>s+(a.tl_reviews||0),0)}</td><td class="n">—</td><td class="n">—</td><td class="n">—</td>`;
   renderAgents();
 }
 function sortAg(k){if(AG_SORT===k)AG_ASC=!AG_ASC;else{AG_SORT=k;AG_ASC=false;}document.querySelectorAll('[id^="ar-"]').forEach(el=>el.textContent='');document.getElementById('ar-'+k).textContent=AG_ASC?'↑':'↓';renderAgents();}
@@ -1122,7 +1342,7 @@ function renderAgents(){
   const sk=ki[AG_SORT]||'total';
   d.sort((a,b)=>sk==='name'?(AG_ASC?a.name>b.name:a.name<b.name)?1:-1:AG_ASC?a[sk]-b[sk]:b[sk]-a[sk]);
   document.getElementById('ag-cnt').textContent=d.length+' agents';
-  document.getElementById('ag-body').innerHTML=d.map((a,i)=>{const eC=a.esc_rate>5?'br':a.esc_rate>2?'ba':'bg';const fC=a.fcr_pct>=80?'bg':a.fcr_pct>=70?'ba':'br';const iC=a.avg_ints>=1.5?'br':a.avg_ints>=1.3?'ba':'bg';return`<tr><td>${i+1}. ${a.name}</td><td class="n" style="font-weight:600">${a.total}</td><td class="n">${a.calls}</td><td class="n">${a.emails}</td><td class="n">${a.chats}</td><td class="n"><span class="bx ${eC}">${a.esc_rate}%</span></td><td class="n"><span class="bx ${fC}">${a.fcr_pct}%</span></td><td class="n"><span class="bx ${iC}">${a.avg_ints}x</span></td><td class="n">${a.multi_pct}%</td></tr>`;}).join('');
+  document.getElementById('ag-body').innerHTML=d.map((a,i)=>{const eC=a.esc_rate>5?'br':a.esc_rate>2?'ba':'bg';const fC=a.fcr_pct>=80?'bg':a.fcr_pct>=70?'ba':'br';const iC=a.avg_ints>=1.5?'br':a.avg_ints>=1.3?'ba':'bg';const tlr=a.tl_reviews||0;return`<tr><td>${i+1}. ${a.name}</td><td class="n" style="font-weight:600">${a.total}</td><td class="n">${a.calls}</td><td class="n">${a.emails}</td><td class="n">${a.chats}</td><td class="n">${tlr>0?`<span class="bx bb">${tlr}</span>`:'—'}</td><td class="n"><span class="bx ${eC}">${a.esc_rate}%</span></td><td class="n"><span class="bx ${fC}">${a.fcr_pct}%</span></td><td class="n"><span class="bx ${iC}">${a.avg_ints}x</span></td></tr>`;}).join('');
 }
 
 // ═══════════════════════════════════════════════
